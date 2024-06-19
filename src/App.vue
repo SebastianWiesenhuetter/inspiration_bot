@@ -1,26 +1,25 @@
 <template>
   <div>
-    <button class="absolute h-10 w-fit p-2 bg-white rounded-lg m-4 hover:bg-slate-100 active:scale-105 duration-100 transition-all" @click="makeCubeJump">Jump</button>
-    <ThreejsScene class="h-full w-full" :cubeJump="cubeJump"/>
-    
-
+    <Landingpage v-if="!activateThreejs" @leave="leaveLandingpage"/>
+    <ThreejsGallery v-if="activateThreejs" :activeImage="activeImage" @setActiveImage="setActiveImage"/>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import ThreejsScene from './components/ThreejsScene.vue'
+// import ThreejsScene from './components/ThreejsScene.vue'
+import ThreejsGallery from './components/ThreejsGallery.vue'
+import Landingpage from './components/Landingpage.vue'
 
-const cubeJump = ref(false)
-
-const makeCubeJump = () => {
-  cubeJump.value = true
-  setTimeout(() => {
-    cubeJump.value = false
-  }, 1000)
+const activeImage = ref(0)
+const setActiveImage = (index: number) => {
+  activeImage.value = index
+}
+const activateThreejs = ref(true)
+const leaveLandingpage = () => {
+  activateThreejs.value = true
 }
 </script>
-
 
 <style scoped>
 
