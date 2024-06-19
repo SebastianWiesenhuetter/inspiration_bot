@@ -1,6 +1,6 @@
 # Three.js inspiration bot
 
-This is the inspiration for AI-supported engineering creativity.
+This is the inspiration for AI-supported engineering creativity. SFB/TRR 280
 
 ## Getting Started
 
