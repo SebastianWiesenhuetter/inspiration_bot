@@ -1,4 +1,4 @@
-# Three.js Boilerplate
+# Three.js inspiration bot
 
 This is a boilerplate project for Three.js, providing a starting point for 3D web development.
 
@@ -14,7 +14,7 @@ Follow these steps to set up and run the project locally.
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/KonstiDoll/threejsBoilerplate.git
+    git clone https://github.com/SebastianWiesenhuetter/inspiration_bot.git
     ```
 
 2. Navigate into the project directory:
