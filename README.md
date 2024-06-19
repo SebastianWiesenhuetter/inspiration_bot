@@ -1,6 +1,6 @@
 # Three.js inspiration bot
 
-This is a boilerplate project for Three.js, providing a starting point for 3D web development.
+This is the inspiration for AI-supported engineering creativity.
 
 ## Getting Started
 
