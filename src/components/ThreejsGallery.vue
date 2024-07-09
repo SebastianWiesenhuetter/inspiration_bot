@@ -132,7 +132,7 @@ const loadGallery = async () => {
         .then(data => {
             data.forEach((image: ImageData) => {
                 const geometry = new THREE.PlaneGeometry(1, 1);
-                const texture = new THREE.TextureLoader().load(`/sample10/${image.file_name}`);
+                const texture = new THREE.TextureLoader().load(`/sample_images_10k_orig01/${image.file_name}`);                
                 const material = new THREE.MeshBasicMaterial({ map: texture });
                 const plane = new THREE.Mesh(geometry, material);
                 plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);

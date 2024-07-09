@@ -1,7 +1,7 @@
 <template>
   <div>
-    <Landingpage v-if="!activateThreejs" @leave="leaveLandingpage"/>
-    <ThreejsGallery v-if="activateThreejs" :activeImage="activeImage" @setActiveImage="setActiveImage"/>
+    <Landingpage v-if="!activateMainpage" @leave="leaveLandingpage"/>
+    <ThreejsGallery v-if="activateMainpage" :activeImage="activeImage" @setActiveImage="setActiveImage"/>
   </div>
 </template>
 
@@ -15,9 +15,9 @@ const activeImage = ref(0)
 const setActiveImage = (index: number) => {
   activeImage.value = index
 }
-const activateThreejs = ref(true)
+const activateMainpage = ref(false)
 const leaveLandingpage = () => {
-  activateThreejs.value = true
+  activateMainpage.value = true
 }
 </script>
 
