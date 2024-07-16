@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV Parsing Benchmark</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    
+    // Create the scene
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Add OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    
+    //const csvUrl = 'path/to/widths.csv'; // Replace with the path to your CSV file
+
+    // Function to load and manually parse widths from CSV
+    const loadWidthsFromCSVManual = async (url) => {
+      const response = await fetch(url);
+      const csvText = await response.text();
+      const rows = csvText.split('\n').map(row => row.split(',').map(cell => cell.trim()));
+      const headers = rows[0].map(header => header.toLowerCase());
+      console.log('Headers:', headers); // Log headers to debug
+      const imageWidthIndex = headers.indexOf('image_width');
+      if (imageWidthIndex === -1) {
+        throw new Error('image_width column not found in CSV');
+      }
+      return rows.slice(1).map(row => parseFloat(row[imageWidthIndex]));
+    };
+
+    // Function to create an instanced mesh with proper UV mapping
+    const createInstancedMesh = async (atlasUrl, widths, rowHeight, count) => {
+      const positions = [];
+      const uvs = [];
+      const indices = [];
+
+      let indexOffset = 0;
+      let currentXOffset = 0;
+      const totalWidth = widths.reduce((a, b) => a + b, 0);
+
+      for (let i = 0; i < count; i++) {
+        const width = widths[i];
+        const tileWidth = width / totalWidth;
+
+        // Vertices positions for a plane
+        positions.push(
+          -0.5, -0.5, 0,
+           0.5, -0.5, 0,
+           0.5,  0.5, 0,
+          -0.5,  0.5, 0
+        );
+
+        // UV coordinates for the plane
+        const offsetX = currentXOffset / totalWidth;
+        uvs.push(
+          offsetX, 1,               // Bottom left
+          offsetX + tileWidth, 1,   // Bottom right
+          offsetX + tileWidth, 0,   // Top right
+          offsetX, 0                // Top left
+        );
+
+        // Indices for the plane
+        indices.push(
+          indexOffset, indexOffset + 1, indexOffset + 2,
+          indexOffset, indexOffset + 2, indexOffset + 3
+        );
+
+        indexOffset += 4;
+        currentXOffset += width;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+
+      const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, map: await loadTextureAtlas(atlasUrl) });
+      const mesh = new THREE.InstancedMesh(geometry, material, count);
+      const dummy = new THREE.Object3D();
+
+      for (let i = 0; i < count; i++) {
+        dummy.position.set(Math.random() * 10, Math.random() * 10, Math.random() * 10);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+
+      return mesh;
+    };
+
+    // Function to load the texture atlas
+    const loadTextureAtlas = (url) => {
+      return new Promise((resolve, reject) => {
+        const loader = new THREE.TextureLoader();
+        loader.load(url, resolve, undefined, reject);
+      });
+    };
+
+    // Example of adding the instanced mesh to the scene
+    (async () => {
+      const atlasUrl = 'atlas4.jpg'; // Replace with the path to your atlas
+      const csvUrl = 'tsne_coordinates_pca_r0_2d_V2_res128.csv'; // Replace with the path to your CSV file
+      const rowHeight = 128; // The height of each row in pixels
+      const widths = await loadWidthsFromCSVManual(csvUrl);
+      const count = widths.length;
+      const instancedMesh = await createInstancedMesh(atlasUrl, widths, rowHeight, count);
+      scene.add(instancedMesh);
+    })();
+
+    // Camera position
+    camera.position.z = 50;
+
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update(); // Update OrbitControls
+      renderer.render(scene, camera);
+    };
+
+    animate();
+  </script>
+</body>
+</html>

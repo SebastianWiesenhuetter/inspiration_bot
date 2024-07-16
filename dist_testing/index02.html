@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV Parsing Benchmark</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    const csvUrl = 'path/to/widths.csv'; // Replace with the path to your CSV file
+
+    
+    // Create the scene
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Add OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    
+    
+    // Function to load and manually parse widths from CSV
+    const loadWidthsFromCSVManual = async (url) => {
+      const response = await fetch(url);
+      const csvText = await response.text();
+      const rows = csvText.split('\n').map(row => row.split(',').map(cell => cell.trim()));
+      const headers = rows[0].map(header => header.toLowerCase());
+      console.log('Headers:', headers); // Log headers to debug
+      const imageWidthIndex = headers.indexOf('image_width');
+      if (imageWidthIndex === -1) {
+        throw new Error('image_width column not found in CSV');
+      }
+      return rows.slice(1).map(row => parseFloat(row[imageWidthIndex]));
+    };
+
+    // Function to create an instanced mesh with proper UV mapping
+    const createInstancedMesh = async (atlasUrl, widths, rowHeight, count) => {
+      const geometry = new THREE.PlaneGeometry(1, 1);
+      const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      const mesh = new THREE.InstancedMesh(geometry, material, count);
+      const texture = await loadTextureAtlas(atlasUrl);
+      material.map = texture;
+      material.map.needsUpdate = true;
+
+      const totalWidth = widths.reduce((a, b) => a + b, 0);
+      const dummy = new THREE.Object3D();
+
+      let currentXOffset = 0;
+      for (let i = 0; i < count; i++) {
+        const width = widths[i];
+        const tileWidth = width / totalWidth;
+
+        // Set position
+        dummy.position.set(Math.random() * 10, Math.random() * 10, Math.random() * 10);
+        dummy.updateMatrix();
+
+        // Modify UV mapping of the geometry for each instance
+        const instanceUVs = new Float32Array([
+          0, 0,        // Bottom left
+          1, 0,        // Bottom right
+          1, 1,        // Top right
+          0, 1         // Top left
+        ]);
+
+        // Adjust UVs with offsets
+        for (let j = 0; j < instanceUVs.length; j += 2) {
+          instanceUVs[j] = instanceUVs[j] * tileWidth + currentXOffset / totalWidth;
+        }
+
+        currentXOffset += width;
+
+        const instanceGeometry = geometry.clone();
+        instanceGeometry.setAttribute('uv', new THREE.BufferAttribute(instanceUVs, 2));
+
+        // Create a mesh for each instance to set the geometry with correct UVs
+        const instanceMesh = new THREE.Mesh(instanceGeometry, material);
+        instanceMesh.position.copy(dummy.position);
+        instanceMesh.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+
+      return mesh;
+    };
+
+    // Function to load the texture atlas
+    const loadTextureAtlas = (url) => {
+      return new Promise((resolve, reject) => {
+        const loader = new THREE.TextureLoader();
+        loader.load(url, resolve, undefined, reject);
+      });
+    };
+
+    // Example of adding the instanced mesh to the scene
+    (async () => {
+      const atlasUrl = 'atlas4.jpg'; // Replace with the path to your atlas
+      const csvUrl = 'tsne_coordinates_pca_r0_2d_V2_res128.csv'; // Replace with the path to your CSV file
+      const rowHeight = 128; // The height of each row in pixels
+      const widths = await loadWidthsFromCSVManual(csvUrl);
+      const count = widths.length;
+      console.log(count);
+      const instancedMesh = await createInstancedMesh(atlasUrl, widths, rowHeight, count);
+      scene.add(instancedMesh);
+    })();
+
+    // Camera position
+    camera.position.z = 50;
+
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update(); // Update OrbitControls
+      renderer.render(scene, camera);
+    };
+
+    animate();
+  </script>
+</body>
+</html>

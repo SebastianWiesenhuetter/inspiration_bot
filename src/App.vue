@@ -1,15 +1,15 @@
 <template>
   <div>
-    <Landingpage v-if="!activateMainpage" @leave="leaveLandingpage"/>
-    <ThreejsGallery v-if="activateMainpage" :activeImage="activeImage" @setActiveImage="setActiveImage"/>
+    <Landingpage7 v-if="!activateMainpage" @leave="leaveLandingpage"/>
+    <Mainpage v-if="activateMainpage" :activeImage="activeImage" @setActiveImage="setActiveImage"/>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 // import ThreejsScene from './components/ThreejsScene.vue'
-import ThreejsGallery from './components/ThreejsGallery.vue'
-import Landingpage from './components/Landingpage.vue'
+import Mainpage from './components/Mainpage.vue'
+import Landingpage7 from './components/Landingpage7.vue'
 
 const activeImage = ref(0)
 const setActiveImage = (index: number) => {
