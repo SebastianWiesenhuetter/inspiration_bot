@@ -27,3 +27,5 @@ dist-ssr
 /public/sample_images_10k_orig01
 /public/sample_images_10k_orig01_64
 /public/sample_images_10k_orig01_128
+
+/dist_testing
