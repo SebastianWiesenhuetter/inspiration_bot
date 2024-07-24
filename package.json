@@ -11,13 +11,15 @@
   "dependencies": {
     "@tweenjs/tween.js": "^23.1.2",
     "autoprefixer": "^10.4.19",
+    "papaparse": "^5.4.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
     "three": "^0.165.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {
-    "@types/three": "^0.164.0",
+    "@types/papaparse": "^5.3.14",
+    "@types/three": "^0.165.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",

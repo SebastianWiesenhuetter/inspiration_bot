@@ -27,5 +27,8 @@ dist-ssr
 /public/sample_images_10k_orig01
 /public/sample_images_10k_orig01_64
 /public/sample_images_10k_orig01_128
+/public/deep_hough_10k_orig01_out01_jsons
+/public/sample100
 
 /dist_testing
+/z_archiv
