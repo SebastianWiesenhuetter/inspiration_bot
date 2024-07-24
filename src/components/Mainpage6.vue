@@ -12,15 +12,15 @@
             </div>
             <div v-if="sceneMode == 'analyse'">
                 <button class="absolute top-1/3 right-80 h-10 w-fit px-4 bg-slate-200 rounded-lg"
-                    @click.stop="showHoughLines">deep hough</button>
+                    @click.stop="showHoughLines">semantic lines</button>
             </div>
 
 
         </div>
         <div id="fpsCounter"
-     style="position: absolute; top: 48px; left: 10px; color: white; background: rgba(0, 0, 0, 0.5); padding: 5px; border-radius: 5px;">
-    FPS: {{ fps }}
-</div>
+            style="position: absolute; top: 48px; left: 10px; color: white; background: rgba(0, 0, 0, 0.5); padding: 5px; border-radius: 5px;">
+            FPS: {{ fps }}
+        </div>
     </div>
 </template>
 <script setup lang="ts">
@@ -28,9 +28,11 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as TWEEN from '@tweenjs/tween.js';
 import { onMounted, ref, watch } from 'vue';
-import { Line2 } from 'three/examples/jsm/lines/Line2';
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+
 
 //FPS measuring 2be deleted later
 const fps = ref(0);
@@ -54,14 +56,16 @@ scene.add(directionalLight);
 const ambientLight = new THREE.AmbientLight(0x404040, 10); // Soft white light
 scene.add(ambientLight);
 
+
+
 // Create a camera
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 5;
 
 // Create a renderer
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-// renderer.toneMapping = THREE.ACESFilmicToneMapping
+//renderer.toneMapping = THREE.ACESFilmicToneMapping
 
 // Create controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -74,7 +78,13 @@ const threejsMap = ref<Node>()
 
 const domElement = renderer.domElement;
 
+//STATS for FPS monitoring
+const stats = new Stats();
+stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+document.body.appendChild(stats.dom);
+
 onMounted(() => {
+    stats.begin();
     threejsMap.value?.appendChild(domElement);
     loadGallery();
     window.addEventListener("resize", setSize);
@@ -94,6 +104,7 @@ const setSize = () => {
 
 // Render the scene
 function animate() {
+    stats.update();
     requestAnimationFrame(animate);
 
     //FPS measuring 2be deleted later
@@ -177,20 +188,33 @@ const loadGallery = async () => {
                 galleryGroup.add(plane);
             });
         });
-    arrangeIn2DGrid(5, 20, 0.1, galleryGroup.children)
+    arrangeIn2DGrid(10, 0.1, galleryGroup.children)
     isGalleryLoaded.value = true
     sceneMode.value = 'gallery'
     hideGroup([analyseGroup, extraGroup])
 }
-const arrangeIn2DGrid = (rows: number, cols: number, margin: number, group: THREE.Object3D[]) => {
+const arrangeIn2DGrid = (maxWidth: number, margin: number, group: THREE.Object3D[]) => {
     let i = 0;
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            if (i >= group.length) return
+    // const cols = Math.ceil(group.length / rows)
+    let accumulatedHeight = 0;
+    for (let row = 0; row < 100; row++) {
+        let accumulatedWidth = 0;
+        for (let col = 0; col < 100; col++) {
+            if (i >= group.length) {
+                console.log('breaking')
+                break
+            }
             const obj = group[i];
-            obj.position.set(col * (1 + margin), row * (1 + margin), 0);
+            const width = obj.scale.x;
+            accumulatedWidth += width / 2;
+            obj.position.set(accumulatedWidth, accumulatedHeight, 0);
+            accumulatedWidth += width / 2 + margin;
             i++;
+            if (accumulatedWidth > maxWidth) {
+                break
+            }
         }
+        accumulatedHeight -= 1 + margin;
     }
 }
 const loadAnalyse = () => {
@@ -316,6 +340,11 @@ const showHoughLines = async () => {
     const folderName = 'deep_hough_10k_orig01_out01_jsons'
     const fileName = activeImage.value?.userData.image.file_name.split('.')[0]
     const points: number[][] = [];
+    const aspectRatio = activeImage.value?.scale.x
+    if (aspectRatio === undefined) {
+        console.log('aspect ratio is undefined')
+        return
+    }
     await fetch(`/${folderName}/${fileName}.json`)
         .then(response => response.json())
         .then(data => {
@@ -326,8 +355,8 @@ const showHoughLines = async () => {
                 //      line.y2 / imageWidth-0.5+imagePosition.x, (imageHeight -line.x2) / imageHeight-0.5+imagePosition.y, 0
                 // ])
                 points.push([
-                    line.y1 / imageHeight + (imagePosition?.x ?? 0) - 0.5, (imageHeight - line.x1) / imageHeight - 0.5 + (imagePosition?.y ?? 0), 0,
-                    line.y2 / imageHeight + (imagePosition?.x ?? 0) - 0.5, (imageHeight - line.x2) / imageHeight - 0.5 + (imagePosition?.y ?? 0), 0
+                    line.y1 / imageHeight + (imagePosition?.x ?? 0) - 0.5 * aspectRatio, (imageHeight - line.x1) / imageHeight - 0.5 + (imagePosition?.y ?? 0), 0.01,
+                    line.y2 / imageHeight + (imagePosition?.x ?? 0) - 0.5 * aspectRatio, (imageHeight - line.x2) / imageHeight - 0.5 + (imagePosition?.y ?? 0), 0.01
                 ])
             });
 

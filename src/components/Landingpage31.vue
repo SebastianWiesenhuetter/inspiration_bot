@@ -6,11 +6,8 @@
         </div>
         <div>
             <button style="pointer-events: auto;"
-                class="absolute top-10 left-10 h-10 px-3 w-fit bg-slate-200 rounded-lg" @click="leave">cloud</button>
-        </div>
-        <div id="fpsCounter"
-            style="position: absolute; top: 10px; left: 10px; color: white; background: rgba(0, 0, 0, 0.5); padding: 5px; border-radius: 5px;">
-            FPS: 0
+                class="absolute top-10 left-10 h-10 px-3 w-fit bg-slate-200 rounded-lg"
+                @click="startAnimation">cloud</button>
         </div>
         <div id="threejs-container"></div>
     </div>
@@ -21,6 +18,8 @@ import { onMounted, onUnmounted, ref, defineEmits } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Papa from 'papaparse';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+import * as TWEEN from '@tweenjs/tween.js';
 
 const emit = defineEmits(['leave']);
 const leave = () => {
@@ -145,30 +144,18 @@ const initThree = () => {
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.5;
 
-    //FPS measuring 2be deleted later
-    let lastTime = 0;
-    let fps = 0;
-    const fpsCounter = document.getElementById('fpsCounter');
+
 
     const animate = () => {
+        stats.update();
         if (!isAnimating.value) {
             console.log('Stopping animation loop');
             return;
         } // Stop the animation loop if the flag is false
         requestAnimationFrame(animate);
+        TWEEN.update();
 
-        //FPS measuring 2be deleted later
-        const currentTime = performance.now();
-        const deltaTime = currentTime - lastTime;
 
-        if (deltaTime > 0) {
-            fps = 1000 / deltaTime;
-            if (fpsCounter) {
-                fpsCounter.textContent = `FPS: ${fps.toFixed(2)}`; // Update the FPS counter on the screen
-            }
-        }
-
-        lastTime = currentTime;
 
         if (!Array.isArray(batchedMeshIds) || batchedMeshIds.length === 0) {
             console.warn('batchedMeshIds is not a valid array or is empty');
@@ -217,12 +204,213 @@ const setSize = () => {
     renderer.setPixelRatio(window.devicePixelRatio);
 };
 
+// STATS for FPS monitoring
+const stats = new Stats();
+stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+document.body.appendChild(stats.dom);
+
+
+
+/////////////// TWEEN STUFF ///////////////////////
+
+async function loadPositionsFromCSV(csvFilePath: string) {
+    // Wrap Papa.parse in a promise to handle the asynchronous nature
+    const parsedPositions = await new Promise((resolve, reject) => {
+        Papa.parse(csvFilePath, {
+            download: true,
+            header: true,
+            complete: (results) => {
+                // Filter out invalid rows directly in the promise
+                const validPositions = results.data.filter((data: any) => data.tsne_x && data.tsne_y && data.density_3);
+                resolve(validPositions);
+            },
+            error: (error) => reject(error)
+        });
+    });
+
+    return parsedPositions;
+}
+
+// usage of updatePositionsFromCSV
+async function updatePositionsFromCSV(csvFile: string) {
+    //const csvFilePath = '/tsne_coordinates_pca_r42_2d_V2.csv';
+    let newPositions: any[] = []; // Explicitly type newPositions as an array of any type and initialize it as an empty array
+    try {
+        newPositions = await loadPositionsFromCSV(csvFile) as any[];
+        //console.log('new positions: ', newPositions);
+    } catch (error) {
+        console.error('Error loading positions from CSV:', error);
+    }
+    //console.log('new positions: ', newPositions);
+    // now animate map the new positions to the mesh
+    // if (!Array.isArray(batchedMeshIds) || batchedMeshIds.length === 0) {
+    //     console.warn('batchedMeshIds is not a valid array or is empty');
+    //     return; // Stop the function if batchedMeshIds is not valid
+    // }
+    if (batchedMeshIds.length === 0) {
+        console.warn('batchedMeshIds is empty');
+        return;
+    }
+    batchedMeshIds.forEach((geoId, i) => {
+        //console.log('trying to do stuff');
+        try {
+            const matrix4 = batchedMesh.getMatrixAt(geoId, new THREE.Matrix4());
+            // Rotate the mesh via matrix
+            const ownPosition = new THREE.Vector3();
+            matrix4.decompose(ownPosition, new THREE.Quaternion(), new THREE.Vector3());
+            // Attempt to modify the matrix. If this fails, the catch block will handle the error.
+            matrix4.lookAt(ownPosition, camera.position, new THREE.Vector3(0, 1, 0));
+            batchedMesh.setMatrixAt(geoId, matrix4);
+
+        } catch (error) {
+            console.error(`Error transforming object with geoId ${geoId}:`, error);
+            // Optionally, handle the error further or continue to the next iteration.
+        }
+
+        //// only tween approach
+        const matrix4 = batchedMesh.getMatrixAt(geoId, new THREE.Matrix4());
+        //const initialPosition = initialPositions[i];
+        const initialPosition = new THREE.Vector3();
+        matrix4.decompose(initialPosition, new THREE.Quaternion(), new THREE.Vector3());
+        const tsneX = parseFloat(newPositions[i].tsne_x);
+        //console.log('tsneX:', tsneX);
+        const tsneY = parseFloat(newPositions[i].tsne_y);
+        const density3 = parseFloat(newPositions[i].density_3);
+        const targetPosition = { x: tsneX, y: density3 * densityScalingFactor, z: tsneY };
+
+        const matrix4a = new THREE.Matrix4();
+        matrix4a.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
+        //                     batchedMesh.setMatrixAt(geoId, matrix4);
+
+        //const targetPosition = newPositions;
+        const dummy = new THREE.Object3D();
+        new TWEEN.Tween(initialPosition)
+            .to(targetPosition, 2000 + Math.random() * 2000) // Randomize duration for each instance
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onUpdate(() => {
+                dummy.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
+                dummy.updateMatrix();
+                batchedMesh.setMatrixAt(i, dummy.matrix);
+                //batchedMesh.instanceMatrix.needsUpdate = true;
+            })
+            .start();
+
+
+
+    });
+
+}
+
+// Function to be called when 'cloud' button is clicked
+const startAnimation = () => {
+    updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv')
+};
+//tsne_coordinates_pca_r0_3d.csv //this is for the cloud button
+
+
+
+// for (let i = 0; i < count; i++) {
+//             const initialPosition = initialPositions[i];
+//             const targetPosition = targetPositions[i];
+//             const dummy = new THREE.Object3D();
+
+//             new TWEEN.Tween(initialPosition)
+//                 .to(targetPosition, 8000 + Math.random() * 2000) // Randomize duration for each instance
+//                 .easing(TWEEN.Easing.Quadratic.Out)
+//                 .onUpdate(() => {
+//                     dummy.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
+//                     dummy.updateMatrix();
+//                     batchedMesh.setMatrixAt(i, dummy.matrix);
+//                     batchedMesh.instanceMatrix.needsUpdate = true;
+//                 })
+//                 .start();
+//         }
+
+//
+// batchedMeshIds.push(geoId);
+//                     const matrix4 = new THREE.Matrix4();
+//                     matrix4.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
+//                     batchedMesh.setMatrixAt(geoId, matrix4);
+
+//exampleUsage();
+//updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv')
+
+// async function updatePositionsFromCSV(csvFile: string) {
+//     const response = await fetch(csvFile);
+//     const csvText = await response.text();
+//     Papa.parse(csvText, {
+//         complete: (results) => {
+//             results.data.forEach((row, index) => {
+//                 const [x, y, z] = (row as number[]).map(Number);
+//                 if (batchedMeshIds.includes(index)) {
+//                     const newPosition = { x, y, z };
+//                     animateMeshToPosition(batchedMesh.getObjectByIndex(index), newPosition);
+//                     //batchedMeshIds.push(geoId);
+//                     const matrix4 = new THREE.Matrix4();
+//                     matrix4.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
+//                     batchedMesh.setMatrixAt(geoId, matrix4);
+//                 }
+//             });
+//         }
+//     });
+// }
+
+// async function loadPositionsFromCSV(csvFilePath: string) {
+//     // Parse the CSV file
+//     // For each row in the CSV, extract the new position and store it in an array or object
+//     Papa.parse(csvFilePath, {
+//         download: true,
+//         header: true,
+//         complete: (results: Papa.ParseResult<{}>) => {
+//             console.log('CSV data new:', results.data);
+//                          results.data.forEach((data: any) => {
+//                             // Check if the row is valid
+//                             if (!data.tsne_x || !data.tsne_y || !data.density_3) {
+//                                 console.warn(`Skipping invalid row: ${JSON.stringify(data)}`);
+//                                 return;
+//                             }
+//                         }
+//                          )
+//                     }
+//         }); // end papa parse
+
+
+
+//     const parsedPositions: any[] = results.data; // Initialize parsedPositions
+//     return parsedPositions;
+// }
+
+// const newPosition = loadPositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv')
+// //const newPosition = loadPositionsFromCSV('/tsne_coordinates_pca_r0_2d_V2_res64_uv.csv')
+
+// console.log('new positions: ', newPosition);
+
+// function animateObjectsToNewPositions(objects, newPositions) {
+//     const tween = new TWEEN.Tween(mesh.position)
+//         .to(newPosition, 2000) // 2000 ms = 2 seconds
+//         .easing(TWEEN.Easing.Quadratic.Out) // Use any easing function you like
+//         .onUpdate(() => {
+//             // This will be called on every frame during the tween
+//             // You can update something else here if needed
+//         })
+//         .start(); // Start the tween immediately
+// }
+
+
+
+// // Function to be called when 'cloud' button is clicked
+// const startAnimation = () => {
+//   updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d.csv');
+// };
+
+//// END TWEEN STUFF ///////////////////////
+
+
 onMounted(() => {
+    stats.begin();
     initThree();
     window.addEventListener("resize", setSize);
 });
-
-
 
 onUnmounted(() => {
     if (renderer && renderer.domElement.parentNode) {
