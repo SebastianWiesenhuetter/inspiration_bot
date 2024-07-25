@@ -24,3 +24,12 @@ dist-ssr
 *.sw?
 
 /public/sample10
+/public/sample_images_10k_orig01
+/public/sample_images_10k_orig01_64
+/public/sample_images_10k_orig01_128
+/public/deep_hough_10k_orig01_out01_jsons
+/public/sample100
+
+/z_archiv
+dist_testing
+
