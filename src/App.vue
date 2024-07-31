@@ -8,8 +8,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 // import ThreejsScene from './components/ThreejsScene.vue'
-import Mainpage from './components/Mainpage6.vue'
-import Landingpage from './components/Landingpage31.vue'
+import Mainpage from './components/Mainpage.vue'
+import Landingpage from './components/Landingpage.vue'
 
 const activeImage = ref(0)
 const setActiveImage = (index: number) => {
