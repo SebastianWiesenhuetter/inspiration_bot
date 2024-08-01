@@ -20,6 +20,10 @@
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
                     :class="segmentationVisible ? 'bg-slate-400' : ''"
                     @click.stop="showSegmentationGeometry">segmentation</button>
+                <button
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
+                    :class="paintingSequenceVisible ? 'bg-slate-400' : ''"
+                    @click.stop="showPaintingSequence">painting sequence</button>
             </div>
 
 
@@ -77,6 +81,7 @@ const domElement = renderer.domElement;
 
 const houghLinesVisible = ref(false)
 const segmentationVisible = ref(false)
+const paintingSequenceVisible = ref(false)
 
 //STATS for FPS monitoring
 const stats = new Stats();
@@ -354,7 +359,7 @@ const showHoughLines = async () => {
         analyseGroup.add(houghLineGroup);
         houghLinesVisible.value = true
     }
-    const image = activeImage.value?.userData.image;    
+    const image = activeImage.value?.userData.image;
     const imagePosition = activeImage.value?.position; // Get the position of the image plane
     // Get image dimensions
     const imageHeight = image.resolution.height;
@@ -390,7 +395,8 @@ type ContourObject = {
     contour_number: number,
     id: number,
     area: number,
-    coords: number[][]
+    coords: number[][],
+    color: number[]
 }
 
 type CountourLayer = {
@@ -415,9 +421,9 @@ const showSegmentationGeometry = async () => {
         analyseGroup.add(segmentationGroup);
         segmentationVisible.value = true;
     }
-    const image = activeImage.value?.userData.image;  
+    const image = activeImage.value?.userData.image;
     const imagePosition = activeImage.value?.position; // Get the position of the image plane
- 
+
     const folderName = 'sam_out01_contours_10k_orig01_cleanup_merged_100/'
     const fileName = activeImage.value?.userData.image.file_name.replace('.', '_') + '.json'
 
@@ -427,7 +433,7 @@ const showSegmentationGeometry = async () => {
             return data
         });
 
-    contourJson.forEach((contourLayer: CountourLayer,index) => {
+    contourJson.forEach((contourLayer: CountourLayer, index) => {
         const offset = 0.5 / contourJson.length
 
         const segmentationLayerGroup = createSegmentationShape(contourLayer, imagePosition, image)
@@ -439,7 +445,7 @@ const showSegmentationGeometry = async () => {
 }
 
 
-const createSegmentationShape = (contourLayer: CountourLayer, imagePosition: THREE.Vector3, image: ImageData) => {
+const createSegmentationShape = (contourLayer: CountourLayer, imagePosition: THREE.Vector3, image: ImageData, color?: THREE.Color) => {
     const layerContourGroup = new THREE.Group();
     contourLayer.contours.forEach((contour) => {
 
@@ -457,19 +463,25 @@ const createSegmentationShape = (contourLayer: CountourLayer, imagePosition: THR
                 shape.lineTo(x, y);
             }
         });
-        //draw contour lines from shape
+        //draw contour lines from shape - optional to be done later
         let material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
-        activeImage.value?.traverse((child) => {
+        if(color){
+             material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+        }
+        else {
+            activeImage.value?.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 material = child.material
             }
         });
+        }
+     
         const geometry = new THREE.ShapeGeometry(shape);
         const mesh = new THREE.Mesh(geometry, material);
         mesh.scale.set(image.resolution.width / image.resolution.height, 1, 1);
         const meshPosition = new THREE.Vector3();
         meshPosition.copy(imagePosition as THREE.Vector3);
-        const offSetVector = new THREE.Vector3(-0.5*image.resolution.width / image.resolution.height, -0.5, 0);
+        const offSetVector = new THREE.Vector3(-0.5 * image.resolution.width / image.resolution.height, -0.5, 0);
         meshPosition.add(offSetVector);
         mesh.position.copy(meshPosition as THREE.Vector3);
         mesh.visible = true;
@@ -479,6 +491,49 @@ const createSegmentationShape = (contourLayer: CountourLayer, imagePosition: THR
     });
 
     return layerContourGroup;
+}
+
+const showPaintingSequence = async () => {
+    if (!activeImage.value) {
+        return
+    }
+    let paintingSequenceGroup = scene.getObjectByName('paintingSequenceGroup_' + activeImage.value?.userData.image.file_name);
+    if (paintingSequenceGroup) {
+        paintingSequenceGroup.visible = !paintingSequenceGroup.visible
+        paintingSequenceVisible.value = paintingSequenceGroup.visible
+        return;
+    }
+    else {
+        paintingSequenceGroup = new THREE.Group();
+        paintingSequenceGroup.name = 'paintingSequenceGroup_' + activeImage.value?.userData.image.file_name;
+        analyseGroup.add(paintingSequenceGroup);
+        paintingSequenceVisible.value = true;
+    }
+    const image = activeImage.value?.userData.image;
+    const imagePosition = activeImage.value?.position; // Get the position of the image plane
+
+    const folderName = 'learn2paint_out01_contours_cleanup_merged_100/'
+    const fileName = activeImage.value?.userData.image.file_name.split('.')[0] + '.json'
+
+
+    const contourJson: CountourLayer[] = await fetch(`/${folderName}/${fileName}`)
+        .then(response => response.json())
+        .then(data => {
+            return data
+        });
+
+    contourJson.forEach((contourLayer: CountourLayer, index) => {
+        const offset = 0.5 / contourJson.length
+        const r = contourLayer.contours[0].color[0]; //this is only possible if there is only one contour per layer
+        const g = contourLayer.contours[0].color[1]; //this is only possible if there is only one contour per layer
+        const b = contourLayer.contours[0].color[2]; //this is only possible if there is only one contour per layer
+        const color = new THREE.Color(`rgb(${r}, ${g}, ${b})`);
+        const paintingSequenceLayerGroup = createSegmentationShape(contourLayer, imagePosition, image,color)
+        paintingSequenceLayerGroup.position.z += 0.01 + index * offset;
+        paintingSequenceGroup.add(paintingSequenceLayerGroup);
+
+    });
+
 }
 
 
