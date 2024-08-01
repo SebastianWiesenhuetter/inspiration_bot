@@ -19,12 +19,12 @@
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
                     :class="segmentationVisible ? 'bg-slate-400' : ''"
-                    @click.stop="showSegmentation">segmentation</button>
+                    @click.stop="showSegmentationGeometry">segmentation</button>
             </div>
 
 
         </div>
-        
+
     </div>
 </template>
 <script setup lang="ts">
@@ -39,18 +39,17 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 
 
-
 // Create a scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x707070);
-// Add a directional light
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
-directionalLight.position.set(-2, 5, 4);
-scene.add(directionalLight);
+// // Add a directional light
+// const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
+// directionalLight.position.set(-2, 5, 4);
+// scene.add(directionalLight);
 
-// Add an ambient light
-const ambientLight = new THREE.AmbientLight(0x404040, 30); // Soft white light
-scene.add(ambientLight);
+// // Add an ambient light
+// const ambientLight = new THREE.AmbientLight(0x404040, 30); // Soft white light
+// scene.add(ambientLight);
 
 
 
@@ -106,9 +105,7 @@ const setSize = () => {
 // Render the scene
 function animate() {
     stats.update();
-    //console.log(renderer.info.render.calls);
     requestAnimationFrame(animate);
-
     renderer.render(scene, camera);
     controls.update();
     TWEEN.update();
@@ -201,7 +198,6 @@ const arrangeIn2DGrid = (maxWidth: number, margin: number, group: THREE.Object3D
         let accumulatedWidth = 0;
         for (let col = 0; col < 100; col++) {
             if (i >= group.length) {
-                console.log('breaking')
                 break
             }
             const obj = group[i];
@@ -297,11 +293,11 @@ const loadExtra = () => {
 const onDrag = (event: MouseEvent) => {
     if (isMouseDown.value) {
         const pixelDistance = Math.abs(event.movementX) + Math.abs(event.movementY);
-        if (pixelDistance > 5){
-            isDragging.value = true    
+        if (pixelDistance > 5) {
+            isDragging.value = true
         }
     }
-    
+
 }
 const mouseUp = () => {
     isMouseDown.value = false
@@ -322,7 +318,6 @@ const onClick = (e: Event) => {
     if (intersects.length > 0 && !isDragging.value) {
         const object = intersects[0].object;
         if (object.userData.isImage && object.visible) {
-            console.log(object.userData.image)
             activeImage.value = object
             sceneMode.value = 'analyse'
         }
@@ -359,17 +354,9 @@ const showHoughLines = async () => {
         analyseGroup.add(houghLineGroup);
         houghLinesVisible.value = true
     }
-    console.log('show hough lines')
-    console.log(activeImage.value?.userData.image.file_name)
-    const image = activeImage.value?.userData.image;
-    //console.log('image:', activeImage.value?.userData.image.resolution.width);    
-    console.log('userdata:', activeImage.value?.userData);
-
+    const image = activeImage.value?.userData.image;    
     const imagePosition = activeImage.value?.position; // Get the position of the image plane
-    console.log('image position:', imagePosition);
-
     // Get image dimensions
-    //const imageWidth = image.resolution.width;
     const imageHeight = image.resolution.height;
 
     // fetch hough lines from json file 
@@ -378,13 +365,11 @@ const showHoughLines = async () => {
     const points: number[][] = [];
     const aspectRatio = activeImage.value?.scale.x
     if (aspectRatio === undefined) {
-        console.log('aspect ratio is undefined')
         return
     }
     await fetch(`/${folderName}/${fileName}.json`)
         .then(response => response.json())
         .then(data => {
-            console.log(data)
             data.forEach((line: any) => {
 
                 points.push([
@@ -395,17 +380,26 @@ const showHoughLines = async () => {
 
         });
 
-    //debugger;
-
     points.forEach((line: number[]) => {
         const lineObject = addLine2(line);
-        console.log('line: ', line)
         houghLineGroup.add(lineObject);
     });
 }
 
+type ContourObject = {
+    contour_number: number,
+    id: number,
+    area: number,
+    coords: number[][]
+}
 
-const showSegmentation = async () => {
+type CountourLayer = {
+    layer: string,
+    layer_number: number,
+    contours: ContourObject[]
+}
+
+const showSegmentationGeometry = async () => {
     if (!activeImage.value) {
         return
     }
@@ -421,69 +415,70 @@ const showSegmentation = async () => {
         analyseGroup.add(segmentationGroup);
         segmentationVisible.value = true;
     }
-    console.log('show segmentation')
-    console.log(activeImage.value?.userData.image.file_name)
-    const image = activeImage.value?.userData.image;
-    //console.log('image:', activeImage.value?.userData.image.resolution.width);    
-    console.log('userdata:', activeImage.value?.userData);
-
+    const image = activeImage.value?.userData.image;  
     const imagePosition = activeImage.value?.position; // Get the position of the image plane
-    console.log('image position:', imagePosition);
+ 
+    const folderName = 'sam_out01_contours_10k_orig01_cleanup_merged_100/'
+    const fileName = activeImage.value?.userData.image.file_name.replace('.', '_') + '.json'
 
-    // Get image dimensions
-    //const imageWidth = image.resolution.width;
-    //const imageHeight = image.resolution.height;
-
-    // fetch segmentation from json file 
-    const folderName = 'sam01_cutouts_10k01_100/' + activeImage.value?.userData.image.file_name.replace('.', '_')
-    const fileName = 'filenames.json'
-    const fileNames = await fetch(`/${folderName}/${fileName}`)
+    const contourJson: CountourLayer[] = await fetch(`/${folderName}/${fileName}`)
         .then(response => response.json())
         .then(data => {
-            console.log('data', data)
             return data
         });
-    console.log('filenames', fileNames)
-    const offset = 0.5 / fileNames.file_names.length
-    fileNames.file_names.forEach((name: string, index: number) => {
-        const segmentationAlphaImage=createSegmentationShape(folderName, name, imagePosition, image, offset, index)
-        
-        segmentationGroup.add(segmentationAlphaImage);
+
+    contourJson.forEach((contourLayer: CountourLayer,index) => {
+        const offset = 0.5 / contourJson.length
+
+        const segmentationLayerGroup = createSegmentationShape(contourLayer, imagePosition, image)
+        segmentationLayerGroup.position.z += 0.01 + index * offset;
+        segmentationGroup.add(segmentationLayerGroup);
+
     });
 
-
-}
-const createSegmentationAlphaImage=(folderName: string, name: string, imagePosition: THREE.Vector3, image:any, offset: number, index: number)=>{
-    const geometry = new THREE.PlaneGeometry(1, 1);
-    const texture = new THREE.TextureLoader().load(folderName + '/' + name);
-    const material = new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 });
-    const plane = new THREE.Mesh(geometry, material);
-    plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
-    plane.position.copy(imagePosition as THREE.Vector3);
-    plane.position.z += 0.01 + index * offset;
-    plane.visible = true
-    plane.userData = { image }
-    plane.userData.isImage = true;
-    plane.name = image.file_name;
-    return plane
 }
 
-const createSegmentationShape=(folderName: string, name: string, imagePosition: THREE.Vector3, image:any, offset: number, index: number)=>{
-    const geometry = new THREE.ShapeGeometry( new THREE.Shape([new THREE.Vector2(0.0,0.0),new THREE.Vector2(0.0,1.0),new THREE.Vector2(1.0,0.0)]) );
-    // const texture = activeImage.value?.material;
-    let material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
-    activeImage.value?.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-            material = child.material
-        }
+
+const createSegmentationShape = (contourLayer: CountourLayer, imagePosition: THREE.Vector3, image: ImageData) => {
+    const layerContourGroup = new THREE.Group();
+    contourLayer.contours.forEach((contour) => {
+
+        const shape = new THREE.Shape();
+        shape.arcLengthDivisions = 1;
+
+        contour.coords.forEach((point, index) => {
+            // Normalize coordinates
+            const x = point[0] / image.resolution.width;
+            const y = (image.resolution.height - point[1]) / image.resolution.height;
+
+            if (index === 0) {
+                shape.moveTo(x, y);
+            } else {
+                shape.lineTo(x, y);
+            }
+        });
+        //draw contour lines from shape
+        let material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
+        activeImage.value?.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                material = child.material
+            }
+        });
+        const geometry = new THREE.ShapeGeometry(shape);
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+        const meshPosition = new THREE.Vector3();
+        meshPosition.copy(imagePosition as THREE.Vector3);
+        const offSetVector = new THREE.Vector3(-0.5*image.resolution.width / image.resolution.height, -0.5, 0);
+        meshPosition.add(offSetVector);
+        mesh.position.copy(meshPosition as THREE.Vector3);
+        mesh.visible = true;
+        layerContourGroup.add(mesh);
+        debugger
+
     });
-    const shapeMesh = new THREE.Mesh(geometry, material);
-    shapeMesh.scale.set(image.resolution.width / image.resolution.height, 1, 1);
-    shapeMesh.position.copy(activeImage.value?.position as THREE.Vector3);
-    shapeMesh.position.z += 0.01 + index * offset;
-    shapeMesh.visible = true;
-    console.log('shapeMesh', shapeMesh)
-    return shapeMesh
+
+    return layerContourGroup;
 }
 
 
