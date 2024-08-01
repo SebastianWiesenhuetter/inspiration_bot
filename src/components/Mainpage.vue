@@ -406,6 +406,9 @@ const showHoughLines = async () => {
 
 
 const showSegmentation = async () => {
+    if (!activeImage.value) {
+        return
+    }
     let segmentationGroup = scene.getObjectByName('segmentationGroup_' + activeImage.value?.userData.image.file_name);
     if (segmentationGroup) {
         segmentationGroup.visible = !segmentationGroup.visible
@@ -429,7 +432,7 @@ const showSegmentation = async () => {
 
     // Get image dimensions
     //const imageWidth = image.resolution.width;
-    const imageHeight = image.resolution.height;
+    //const imageHeight = image.resolution.height;
 
     // fetch segmentation from json file 
     const folderName = 'sam01_cutouts_10k01_100/' + activeImage.value?.userData.image.file_name.replace('.', '_')
@@ -442,26 +445,47 @@ const showSegmentation = async () => {
         });
     console.log('filenames', fileNames)
     const offset = 0.5 / fileNames.file_names.length
-    fileNames.file_names.forEach((name: string[], index: number) => {
-        const geometry = new THREE.PlaneGeometry(1, 1);
-        const texture = new THREE.TextureLoader().load(folderName + '/' + name);
-        const material = new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 });
-        const plane = new THREE.Mesh(geometry, material);
-        plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
-        plane.position.copy(imagePosition as THREE.Vector3);
-
-        plane.position.z += 0.01 + index * offset;
-        plane.visible = true
-        //plane.translateX(offset.value) //NOT REQUIRED??
-        plane.userData = { image }
-        plane.userData.isImage = true;
-        plane.name = image.file_name;
-        segmentationGroup.add(plane);
+    fileNames.file_names.forEach((name: string, index: number) => {
+        const segmentationAlphaImage=createSegmentationShape(folderName, name, imagePosition, image, offset, index)
+        
+        segmentationGroup.add(segmentationAlphaImage);
     });
 
 
-
 }
+const createSegmentationAlphaImage=(folderName: string, name: string, imagePosition: THREE.Vector3, image:any, offset: number, index: number)=>{
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    const texture = new THREE.TextureLoader().load(folderName + '/' + name);
+    const material = new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5 });
+    const plane = new THREE.Mesh(geometry, material);
+    plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+    plane.position.copy(imagePosition as THREE.Vector3);
+    plane.position.z += 0.01 + index * offset;
+    plane.visible = true
+    plane.userData = { image }
+    plane.userData.isImage = true;
+    plane.name = image.file_name;
+    return plane
+}
+
+const createSegmentationShape=(folderName: string, name: string, imagePosition: THREE.Vector3, image:any, offset: number, index: number)=>{
+    const geometry = new THREE.ShapeGeometry( new THREE.Shape([new THREE.Vector2(0.0,0.0),new THREE.Vector2(0.0,1.0),new THREE.Vector2(1.0,0.0)]) );
+    // const texture = activeImage.value?.material;
+    let material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
+    activeImage.value?.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+            material = child.material
+        }
+    });
+    const shapeMesh = new THREE.Mesh(geometry, material);
+    shapeMesh.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+    shapeMesh.position.copy(activeImage.value?.position as THREE.Vector3);
+    shapeMesh.position.z += 0.01 + index * offset;
+    shapeMesh.visible = true;
+    console.log('shapeMesh', shapeMesh)
+    return shapeMesh
+}
+
 
 </script>
 <style scoped></style>
