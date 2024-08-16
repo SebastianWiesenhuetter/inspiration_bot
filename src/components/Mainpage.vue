@@ -40,6 +40,7 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
+//import { randFloat } from 'three/src/math/MathUtils.js';
 
 
 
@@ -116,6 +117,8 @@ function animate() {
     TWEEN.update();
 }
 const sceneMode = ref<'gallery' | 'analyse' | 'generate'>('gallery')
+//const sceneMode = ref<'gallery' | 'analyse' | 'generate'>('analyse')
+
 
 watch(() => sceneMode.value, (newVal, oldVal) => {
     if (newVal === oldVal) return
@@ -124,7 +127,7 @@ watch(() => sceneMode.value, (newVal, oldVal) => {
     } else if (newVal === 'analyse') {
         loadAnalyse()
     } else if (newVal === 'generate') {
-        loadExtra()
+        loadGenerate()
     }
 })
 
@@ -134,9 +137,9 @@ scene.add(galleryGroup);
 const analyseGroup: THREE.Group = new THREE.Group();
 analyseGroup.name = 'analyseGroup'
 scene.add(analyseGroup);
-const extraGroup: THREE.Group = new THREE.Group();
-extraGroup.name = 'extraGroup'
-scene.add(extraGroup);
+const generateGroup: THREE.Group = new THREE.Group();
+generateGroup.name = 'generateGroup'
+scene.add(generateGroup);
 
 
 const hideGroup = (groups: THREE.Group[]) => {
@@ -167,7 +170,7 @@ const loadGallery = async () => {
         showGroup([galleryGroup])
         tweenToPosition(lastCameraPosition)
         tweenToCameraTarget(controls.target, lastCameraTarget)
-        hideGroup([analyseGroup, extraGroup])
+        hideGroup([analyseGroup, generateGroup])
         return
     }
     // get imageJson from puplic folder
@@ -193,7 +196,7 @@ const loadGallery = async () => {
     arrangeIn2DGrid(10, 0.1, galleryGroup.children)
     isGalleryLoaded.value = true
     sceneMode.value = 'gallery'
-    hideGroup([analyseGroup, extraGroup])
+    hideGroup([analyseGroup, generateGroup])
 }
 const arrangeIn2DGrid = (maxWidth: number, margin: number, group: THREE.Object3D[]) => {
     let i = 0;
@@ -219,9 +222,12 @@ const arrangeIn2DGrid = (maxWidth: number, margin: number, group: THREE.Object3D
     }
 }
 const loadAnalyse = () => {
-    hideGroup([galleryGroup, extraGroup])
+    lastCameraPosition.copy(camera.position) //will this work also - if we directly start in analyse mode? i think yes, since we declare it as a global variable
+    lastCameraTarget.copy(controls.target)
+    hideGroup([galleryGroup, generateGroup])
     houghLinesVisible.value = false;
     segmentationVisible.value = false;
+    paintingSequenceVisible.value = false;
     //do we need this next loop?	
     analyseGroup.children.forEach(child => {
         //analyseGroup.remove(child)
@@ -248,21 +254,29 @@ const loadAnalyse = () => {
         //analyseGroup.children[0].visible = true
         moveCameraToPosition(activeImage.value.position)
     }
+    // this part does not work yet - we have to create a random image loading routine from the whole of the dataset, not only from the gallery
+    // probably this part should be removed later in it current form
+    // else {
+    //     activeImage.value = galleryGroup.children[randFloat(0, galleryGroup.children.length - 1)]
+    //     console.log('am in analyse mode: ',activeImage.value);
+    // }
 }
 
-const lastCameraPosition = new THREE.Vector3()
-const lastCameraTarget = new THREE.Vector3()
+const lastCameraPosition = new THREE.Vector3(0,0,5) //set initial camera position has to be reconsidered - but still better than leaving it empty, otherwise zooms into nothing
+const lastCameraTarget = new THREE.Vector3(0,0,0)
 const moveCameraToPosition = (position: THREE.Vector3) => {
-    lastCameraPosition.copy(camera.position)
-    lastCameraTarget.copy(controls.target)
+    //this needs to be moved out of this function - but then called every time - we want to remember the last camera position
+    // for now, i already moved it on top of the loadAnalyse function
+    // lastCameraPosition.copy(camera.position)
+    // lastCameraTarget.copy(controls.target)
     const targetPosition = position.clone()
     const targetLookat = position.clone()
     const currentLookat = controls.target.clone()
     targetPosition.z += 2
     tweenToPosition(targetPosition)
     tweenToCameraTarget(currentLookat, targetLookat)
-
 }
+
 const tweenToPosition = (position: THREE.Vector3) => {
     const objectPosition = camera.position.clone()
     new TWEEN.Tween(objectPosition)
@@ -283,14 +297,14 @@ const tweenToCameraTarget = (startingLookat: THREE.Vector3, targetLookat: THREE.
         })
         .start()
 }
-const loadExtra = () => {
+const loadGenerate = () => {
     sceneMode.value = 'generate'
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
     //const material = new THREE.MeshBasicMaterial();
     const cube = new THREE.Mesh(geometry, material);
 
-    extraGroup.add(cube);
+    generateGroup.add(cube);
     hideGroup([galleryGroup, analyseGroup])
 }
 

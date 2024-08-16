@@ -1,13 +1,15 @@
 <template>
     <div ref="canvasContainer" class="h-screen w-screen relative">
-        <div class="absolute inset-0 flex justify-center items-center" style="pointer-events: none;">
+        <div class="absolute inset-0 flex justify-center items-end mb-10" style="pointer-events: none;">
             <button style="pointer-events: auto;" class="h-10 px-3 w-fit bg-slate-200 rounded-lg"
                 @click="leave">START</button>
         </div>
-        <div>
-            <button style="pointer-events: auto;"
-                class="absolute top-10 left-10 h-10 px-3 w-fit bg-slate-200 rounded-lg"
-                @click="startAnimation">cloud</button>
+        <div v-if="isCsvLoaded">
+            <button style="pointer-events: auto;" class="absolute bottom-5 right-5 " @click="startAnimation('Cloud')">
+                <img src="/cloud100px_8.png" alt="landscape" border="0" width="100%" height="100%" /></button>
+            <button style="pointer-events: auto;" class="absolute bottom-24 right-5 "
+                @click="startAnimation('Landscape')">
+                <img src="/landscape_button07.png" alt="cloud" border="0" width="100%" height="100%" /></button>
         </div>
         <div id="threejs-container"></div>
     </div>
@@ -28,20 +30,18 @@ const leave = () => {
 };
 
 const canvasContainer = ref<HTMLElement | null>(null);
-// let renderer: THREE.WebGLRenderer | undefined; // Define renderer at the top level
+
+const isCsvLoaded = ref(false);
 let controls: OrbitControls | undefined; // Define controls at the top level
 
-const densityScalingFactor = 80000; // Adjust this value as needed
+let densityScalingFactor = 80000; // Adjust this value as needed
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 //const renderer = new THREE.WebGLRenderer({ antialias: false }); 
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
-// add antialiasing
-
-
 
 //empty array for batched mesh ids
 const batchedMeshIds: number[] = [];
@@ -52,8 +52,6 @@ const initThree = () => {
 
     const loader = new THREE.TextureLoader();
     loader.load('/texture_atlas.jpg', (texture) => {
-        console.log('Texture loaded:', texture);
-
         const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
         const numberOfMeshes = 10000;
         batchedMesh = new THREE.BatchedMesh(numberOfMeshes, numberOfMeshes * 4, numberOfMeshes * 10, material);
@@ -64,15 +62,12 @@ const initThree = () => {
     });
 
 
-
-
     const loadCSVData = (batchedMesh: THREE.BatchedMesh) => {
         Papa.parse('/tsne_coordinates_pca_r0_2d_V2_res64_uv.csv', {
             download: true,
             header: true,
             complete: (results: Papa.ParseResult<{}>) => {
-                console.log('CSV data:', results.data);
-
+                //console.log('CSV data:', results.data);
                 results.data.forEach((data: any) => {
                     // Check if the row is valid
                     if (!data.image_width || !data.image_height || !data.u_min || !data.v_min || !data.u_max || !data.v_max || !data.density_3) {
@@ -117,21 +112,14 @@ const initThree = () => {
                     const matrix4 = new THREE.Matrix4();
                     matrix4.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
                     batchedMesh.setMatrixAt(geoId, matrix4);
-
-                    // Create the material and mesh
-                    //const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-                    // const plane = new THREE.Mesh(geometry, material);
-                    // plane.position.set(tsneX, density3 * densityScalingFactor, tsneY); // Use tsne_x for x, scaled density_3 for y, and tsne_y for z
-
-                    // Add the mesh to the scene
-                    // scene.add(plane);
                 });
 
                 // Position the camera
-                camera.position.z = 10;
+                //camera.position.z = 10;
+                camera.position.set(-23.2, 36.6, -44.4);
+                controls!.target.set(-7.4, -7.6, -4.3);
+                //controls: 
 
-                // Start the animation loop
-                //animate();
             },
             error: (err) => {
                 console.error('Error parsing CSV:', err);
@@ -145,8 +133,6 @@ const initThree = () => {
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.5;
 
-
-
     const animate = () => {
         stats.update();
         if (!isAnimating.value) {
@@ -155,7 +141,6 @@ const initThree = () => {
         } // Stop the animation loop if the flag is false
         requestAnimationFrame(animate);
         TWEEN.update();
-
 
 
         if (!Array.isArray(batchedMeshIds) || batchedMeshIds.length === 0) {
@@ -183,8 +168,6 @@ const initThree = () => {
         });
         controls!.update(); // Update controls in the animation loop
         renderer!.render(scene, camera);
-
-
     };
 
     animate();
@@ -193,8 +176,6 @@ const initThree = () => {
         threejsContainer.appendChild(renderer.domElement);
     }
 };
-
-
 
 
 const setSize = () => {
@@ -222,7 +203,7 @@ async function loadPositionsFromCSV(csvFilePath: string) {
             header: true,
             complete: (results) => {
                 // Filter out invalid rows directly in the promise
-                const validPositions = results.data.filter((data: any) => data.tsne_x && data.tsne_y && data.density_3);
+                const validPositions = results.data.filter((data: any) => data.tsne_x && data.tsne_y && (data.density_3 || data.tsne_z));
                 resolve(validPositions);
             },
             error: (error) => reject(error)
@@ -232,41 +213,90 @@ async function loadPositionsFromCSV(csvFilePath: string) {
     return parsedPositions;
 }
 
-// usage of updatePositionsFromCSV
-async function updatePositionsFromCSV(csvFile: string) {
-    //const csvFilePath = '/tsne_coordinates_pca_r42_2d_V2.csv';
-    let newPositions: any[] = []; // Explicitly type newPositions as an array of any type and initialize it as an empty array
-    try {
-        newPositions = await loadPositionsFromCSV(csvFile) as any[];
-        //console.log('new positions: ', newPositions);
-    } catch (error) {
-        console.error('Error loading positions from CSV:', error);
-    }
-    //console.log('new positions: ', newPositions);
-    // now animate map the new positions to the mesh
-    // if (!Array.isArray(batchedMeshIds) || batchedMeshIds.length === 0) {
-    //     console.warn('batchedMeshIds is not a valid array or is empty');
-    //     return; // Stop the function if batchedMeshIds is not valid
-    // }
-    if (batchedMeshIds.length === 0) {
-        console.warn('batchedMeshIds is empty');
-        return;
-    }
-    batchedMeshIds.forEach((geoId, i) => {
-        //console.log('trying to do stuff');
-        // try {
-        //     const matrix4 = batchedMesh.getMatrixAt(geoId, new THREE.Matrix4());
-        //     // Rotate the mesh via matrix
-        //     const ownPosition = new THREE.Vector3();
-        //     matrix4.decompose(ownPosition, new THREE.Quaternion(), new THREE.Vector3());
-        //     // Attempt to modify the matrix. If this fails, the catch block will handle the error.
-        //     matrix4.lookAt(ownPosition, camera.position, new THREE.Vector3(0, 1, 0));
-        //     batchedMesh.setMatrixAt(geoId, matrix4);
+//lets load all the 4 csv files directly at the start
+let positionsCloud1: any[] = [];
+let positionsCloud2: any[] = [];
+let positionsLandscape1: any[] = [];
+let positionsLandscape2: any[] = [];
+const loadAllPositions = async () => {
+    positionsCloud1 = await loadPositionsFromCSV('/tsne_coordinates_pca_r0_3d.csv') as any[];
+    positionsCloud2 = await loadPositionsFromCSV('/tsne_coordinates_pca_r42_3d.csv') as any[];
+    positionsLandscape1 = await loadPositionsFromCSV('/tsne_coordinates_pca_r0_2d_V2_res64_uv.csv') as any[];
+    positionsLandscape2 = await loadPositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv') as any[];
+    //what are the different versions of the csv files?
+    //now we have used the versions with pca initialisation
+    //we could compare them to the ones without pca initialisation
+    //tsne_coordinates_noi_r0_2d_V2.csv
+    //tsne_coordinates_noi_r42_2d_V2.csv
+    //tsne_coordinates_noi_r0_3d.csv
+    //tsne_coordinates_noi_r42_3d.csv
 
-        // } catch (error) {
-        //     console.error(`Error transforming object with geoId ${geoId}:`, error);
-        //     // Optionally, handle the error further or continue to the next iteration.
-        // }
+};
+
+loadAllPositions().then(() => {
+    isCsvLoaded.value = true;
+});
+
+
+// usage of updatePositionsFromCSV
+// async function updatePositionsFromCSV(csvFile: string) {
+//     //const csvFilePath = '/tsne_coordinates_pca_r42_2d_V2.csv';
+//     let newPositions: any[] = []; // Explicitly type newPositions as an array of any type and initialize it as an empty array
+//     try {
+//         newPositions = await loadPositionsFromCSV(csvFile) as any[];
+//     } catch (error) {
+//         console.error('Error loading positions from CSV:', error);
+//     }
+//     //console.log('new positions: ', newPositions);
+//     if (batchedMeshIds.length === 0) {
+//         console.warn('batchedMeshIds is empty');
+//         return;
+//     }
+//     batchedMeshIds.forEach((geoId, i) => {
+
+//         //// only tween approach
+//         const matrix4 = batchedMesh.getMatrixAt(geoId, new THREE.Matrix4());
+//         //const initialPosition = initialPositions[i];
+//         const initialPosition = new THREE.Vector3();
+//         matrix4.decompose(initialPosition, new THREE.Quaternion(), new THREE.Vector3());
+//         const tsneX = parseFloat(newPositions[i].tsne_x);
+//         //console.log('tsneX:', tsneX);
+//         const tsneY = parseFloat(newPositions[i].tsne_y);
+//         let yValue = 0;
+//         if (newPositions[i].density_3 != undefined) {
+//             yValue = parseFloat(newPositions[i].density_3);
+//             densityScalingFactor = 80000;
+//         }
+//         else if (newPositions[i].tsne_z != undefined) {
+//             yValue = parseFloat(newPositions[i].tsne_z);
+//             densityScalingFactor = 0.5;
+//         }
+
+//         const targetPosition = { x: tsneX, y: yValue * densityScalingFactor, z: tsneY };
+
+//         const matrix4a = new THREE.Matrix4();
+//         matrix4a.makeTranslation(tsneX, yValue * densityScalingFactor, tsneY);
+
+//         /// TODO - probably remove dummy object
+//         const dummy = new THREE.Object3D();
+
+//         new TWEEN.Tween(initialPosition)
+//             .to(targetPosition, 2000 + Math.random() * 2000) // Randomize duration for each instance
+//             .easing(TWEEN.Easing.Quadratic.Out)
+//             .onUpdate(() => {
+//                 dummy.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
+//                 dummy.updateMatrix();
+//                 batchedMesh.setMatrixAt(i, dummy.matrix);
+//                 //batchedMesh.instanceMatrix.needsUpdate = true;
+//             })
+//             .start();
+
+//     });
+
+// }
+async function updatePositionsFromCSV1(newPositions: any[]) {
+
+    batchedMeshIds.forEach((geoId, i) => {
 
         //// only tween approach
         const matrix4 = batchedMesh.getMatrixAt(geoId, new THREE.Matrix4());
@@ -276,134 +306,75 @@ async function updatePositionsFromCSV(csvFile: string) {
         const tsneX = parseFloat(newPositions[i].tsne_x);
         //console.log('tsneX:', tsneX);
         const tsneY = parseFloat(newPositions[i].tsne_y);
-        const density3 = parseFloat(newPositions[i].density_3);
-        const targetPosition = { x: tsneX, y: density3 * densityScalingFactor, z: tsneY };
+        let yValue = 0;
+        if (newPositions[i].density_3 != undefined) {
+            yValue = parseFloat(newPositions[i].density_3);
+            densityScalingFactor = 80000;
+        }
+        else if (newPositions[i].tsne_z != undefined) {
+            yValue = parseFloat(newPositions[i].tsne_z);
+            densityScalingFactor = 0.5;
+        }
+
+        const targetPosition = { x: tsneX, y: yValue * densityScalingFactor, z: tsneY };
 
         const matrix4a = new THREE.Matrix4();
-        matrix4a.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
-        //                     batchedMesh.setMatrixAt(geoId, matrix4);
+        matrix4a.makeTranslation(tsneX, yValue * densityScalingFactor, tsneY);
 
-        //const targetPosition = newPositions; 
         /// TODO - probably remove dummy object
         const dummy = new THREE.Object3D();
+
         new TWEEN.Tween(initialPosition)
             .to(targetPosition, 2000 + Math.random() * 2000) // Randomize duration for each instance
-            .easing(TWEEN.Easing.Quadratic.Out)
+            //.easing(TWEEN.Easing.Quadratic.Out)
+            //.easing(TWEEN.Easing.Quartic.Out)
+            .easing(TWEEN.Easing.Elastic.Out)
             .onUpdate(() => {
                 dummy.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
                 dummy.updateMatrix();
                 batchedMesh.setMatrixAt(i, dummy.matrix);
                 //batchedMesh.instanceMatrix.needsUpdate = true;
             })
+            //         .onComplete(function() {
+            //     scene.remove(dummy) // Dispose of the dummy object after the tween is complete
+            //     // You can also set a flag here if you need to check the completion status later
+            // })
             .start();
-
-
 
     });
 
 }
 
 // Function to be called when 'cloud' button is clicked
-const startAnimation = () => {
-    updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv')
+const cloudPositionState = ref(0);
+const landscapePositionState = ref(0);
+const startAnimation = (type: 'Landscape' | 'Cloud') => {
+    TWEEN.removeAll();
+    if (type === 'Cloud') {
+        if (cloudPositionState.value === 0) {
+            updatePositionsFromCSV1(positionsCloud2);
+            // updatePositionsFromCSV('/tsne_coordinates_pca_r42_3d.csv'); 
+            ////tsne_coordinates_pca_r42_3d.csv
+            cloudPositionState.value = 1;
+        } else {
+            updatePositionsFromCSV1(positionsCloud1);
+            // updatePositionsFromCSV('/tsne_coordinates_pca_r0_3d.csv'); 
+
+            cloudPositionState.value = 0;
+        }
+    } else {
+        if (landscapePositionState.value === 0) {
+            updatePositionsFromCSV1(positionsLandscape2);
+            // updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv');
+            landscapePositionState.value = 1;
+        } else {
+            updatePositionsFromCSV1(positionsLandscape1);
+            // updatePositionsFromCSV('/tsne_coordinates_pca_r0_2d_V2_res64_uv.csv');
+            landscapePositionState.value = 0;
+        }
+    }
 };
 //tsne_coordinates_pca_r0_3d.csv //this is for the cloud button
-
-
-
-// for (let i = 0; i < count; i++) {
-//             const initialPosition = initialPositions[i];
-//             const targetPosition = targetPositions[i];
-//             const dummy = new THREE.Object3D();
-
-//             new TWEEN.Tween(initialPosition)
-//                 .to(targetPosition, 8000 + Math.random() * 2000) // Randomize duration for each instance
-//                 .easing(TWEEN.Easing.Quadratic.Out)
-//                 .onUpdate(() => {
-//                     dummy.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
-//                     dummy.updateMatrix();
-//                     batchedMesh.setMatrixAt(i, dummy.matrix);
-//                     batchedMesh.instanceMatrix.needsUpdate = true;
-//                 })
-//                 .start();
-//         }
-
-//
-// batchedMeshIds.push(geoId);
-//                     const matrix4 = new THREE.Matrix4();
-//                     matrix4.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
-//                     batchedMesh.setMatrixAt(geoId, matrix4);
-
-//exampleUsage();
-//updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv')
-
-// async function updatePositionsFromCSV(csvFile: string) {
-//     const response = await fetch(csvFile);
-//     const csvText = await response.text();
-//     Papa.parse(csvText, {
-//         complete: (results) => {
-//             results.data.forEach((row, index) => {
-//                 const [x, y, z] = (row as number[]).map(Number);
-//                 if (batchedMeshIds.includes(index)) {
-//                     const newPosition = { x, y, z };
-//                     animateMeshToPosition(batchedMesh.getObjectByIndex(index), newPosition);
-//                     //batchedMeshIds.push(geoId);
-//                     const matrix4 = new THREE.Matrix4();
-//                     matrix4.makeTranslation(tsneX, density3 * densityScalingFactor, tsneY);
-//                     batchedMesh.setMatrixAt(geoId, matrix4);
-//                 }
-//             });
-//         }
-//     });
-// }
-
-// async function loadPositionsFromCSV(csvFilePath: string) {
-//     // Parse the CSV file
-//     // For each row in the CSV, extract the new position and store it in an array or object
-//     Papa.parse(csvFilePath, {
-//         download: true,
-//         header: true,
-//         complete: (results: Papa.ParseResult<{}>) => {
-//             console.log('CSV data new:', results.data);
-//                          results.data.forEach((data: any) => {
-//                             // Check if the row is valid
-//                             if (!data.tsne_x || !data.tsne_y || !data.density_3) {
-//                                 console.warn(`Skipping invalid row: ${JSON.stringify(data)}`);
-//                                 return;
-//                             }
-//                         }
-//                          )
-//                     }
-//         }); // end papa parse
-
-
-
-//     const parsedPositions: any[] = results.data; // Initialize parsedPositions
-//     return parsedPositions;
-// }
-
-// const newPosition = loadPositionsFromCSV('/tsne_coordinates_pca_r42_2d_V2.csv')
-// //const newPosition = loadPositionsFromCSV('/tsne_coordinates_pca_r0_2d_V2_res64_uv.csv')
-
-// console.log('new positions: ', newPosition);
-
-// function animateObjectsToNewPositions(objects, newPositions) {
-//     const tween = new TWEEN.Tween(mesh.position)
-//         .to(newPosition, 2000) // 2000 ms = 2 seconds
-//         .easing(TWEEN.Easing.Quadratic.Out) // Use any easing function you like
-//         .onUpdate(() => {
-//             // This will be called on every frame during the tween
-//             // You can update something else here if needed
-//         })
-//         .start(); // Start the tween immediately
-// }
-
-
-
-// // Function to be called when 'cloud' button is clicked
-// const startAnimation = () => {
-//   updatePositionsFromCSV('/tsne_coordinates_pca_r42_2d.csv');
-// };
 
 //// END TWEEN STUFF ///////////////////////
 
@@ -428,13 +399,7 @@ onUnmounted(() => {
     }
     // Dispose of batchedMesh and related resources
     if (batchedMesh) {
-        // batchedMeshIds.forEach((geoId) => {
-        //     const geometry = batchedMesh.geometry(geoId);
-        //     if (geometry) {
-        //         geometry.dispose();
-        //     }
-        // });
-        console.log(batchedMesh.geometry);
+        //console.log(batchedMesh.geometry);
         batchedMeshIds.splice(0, batchedMeshIds.length);
         console.log(batchedMeshIds.length);
         batchedMesh.dispose();
