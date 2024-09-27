@@ -1,0 +1,47 @@
+[
+    {
+        "layer": "aaron-douglas-let-my-people-go_0_contours",
+        "layer_number": 0,
+        "contours": [
+            {
+                "contour_number": 0,
+                "id": 45,
+                "area": 3506.5,
+                "coords": [
+                    [
+                        100,
+                        100
+                    ],
+                    [
+                        1361,
+                        100
+                    ],
+                    [
+                        1361,
+                        1456
+                    ]
+                ]
+            },
+            {
+                "contour_number": 1,
+                "id": 62,
+                "area": 4076.5,
+                "coords": [
+                    [
+                        1201,
+                        1406
+                    ],
+                    [
+                        1200,
+                        1407
+                    ],
+                    [
+                        1198,
+                        1407
+                    ]
+                ]
+            }
+            
+        ]
+    }
+]
