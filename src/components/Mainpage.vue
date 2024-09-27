@@ -14,7 +14,7 @@
                 class="absolute top-1/3 right-80 h-1/2 w-fit flex flex-col justify-start items-center space-y-1 pointer-events-none">
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto"
-                    :class="houghLinesVisible ? 'bg-slate-400' : ''" @click.stop="showHoughLines">semantic
+                    :class="semanticLinesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticLines">semantic
                     lines</button>
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
@@ -22,10 +22,35 @@
                     @click.stop="showSegmentationGeometry">segmentation</button>
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
-                    :class="paintingSequenceVisible ? 'bg-slate-400' : ''"
-                    @click.stop="showPaintingSequence">painting sequence</button>
-            </div>
+                    :class="paintingSequenceVisible ? 'bg-slate-400' : ''" @click.stop="showPaintingSequence">painting
+                    sequence</button>
+                <button
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
+                    :class="imageDepthVisible ? 'bg-slate-400' : ''" @click.stop="showImageDepth">image
+                    depth</button>
+                <button
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
+                    :class="semanticAnalysisVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">semantic
+                    analysis</button>
+                <button
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
+                    :class="houghLinesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">Hough
+                    lines</button>
+                <button
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
+                    :class="houghCirclesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">Hough
+                    circles</button>
+                <button
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
+                    :class="shapeRecognitionVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">shape
+                    recognition</button>
 
+            </div>
+            <div v-if="contentSemanticAnalysis && sceneMode == 'analyse'"
+                class="absolute top-1/3 right-160 h-1/2 w-96 flex flex-col justify-start items-center space-y-1 pointer-events-none text-white text-xs whitespace-pre-wrap ">
+                <p>{{ contentSemanticAnalysis }}</p>
+
+            </div>
 
         </div>
 
@@ -40,7 +65,11 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
+//import { depth } from 'three/examples/jsm/nodes/Nodes.js';
 //import { randFloat } from 'three/src/math/MathUtils.js';
+import { randInt } from 'three/src/math/MathUtils.js';
+//import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+//import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
 
 
@@ -80,9 +109,15 @@ const threejsMap = ref<Node>()
 
 const domElement = renderer.domElement;
 
-const houghLinesVisible = ref(false)
+const semanticLinesVisible = ref(false)
 const segmentationVisible = ref(false)
 const paintingSequenceVisible = ref(false)
+const imageDepthVisible = ref(false)
+const semanticAnalysisVisible = ref(false)
+const houghLinesVisible = ref(false)
+const houghCirclesVisible = ref(false)
+const shapeRecognitionVisible = ref(false)
+const contentSemanticAnalysis = ref(''); // Declare a ref variable with an initial empty string
 
 //STATS for FPS monitoring
 const stats = new Stats();
@@ -225,9 +260,16 @@ const loadAnalyse = () => {
     lastCameraPosition.copy(camera.position) //will this work also - if we directly start in analyse mode? i think yes, since we declare it as a global variable
     lastCameraTarget.copy(controls.target)
     hideGroup([galleryGroup, generateGroup])
-    houghLinesVisible.value = false;
+    semanticLinesVisible.value = false;
     segmentationVisible.value = false;
     paintingSequenceVisible.value = false;
+    imageDepthVisible.value = false;
+    semanticAnalysisVisible.value = false;
+    contentSemanticAnalysis.value = ""; // Update the ref's value
+    houghLinesVisible.value = false;
+    houghCirclesVisible.value = false;
+    shapeRecognitionVisible.value = false;
+
     //do we need this next loop?	
     analyseGroup.children.forEach(child => {
         //analyseGroup.remove(child)
@@ -262,13 +304,14 @@ const loadAnalyse = () => {
     // }
 }
 
-const lastCameraPosition = new THREE.Vector3(0,0,5) //set initial camera position has to be reconsidered - but still better than leaving it empty, otherwise zooms into nothing
-const lastCameraTarget = new THREE.Vector3(0,0,0)
+const lastCameraPosition = new THREE.Vector3(0, 0, 5) //set initial camera position has to be reconsidered - but still better than leaving it empty, otherwise zooms into nothing
+const lastCameraTarget = new THREE.Vector3(0, 0, 0)
 const moveCameraToPosition = (position: THREE.Vector3) => {
     //this needs to be moved out of this function - but then called every time - we want to remember the last camera position
     // for now, i already moved it on top of the loadAnalyse function
     // lastCameraPosition.copy(camera.position)
     // lastCameraTarget.copy(controls.target)
+    //same goes for the target position - moved it out of this function to the top of the loadAnalyse function
     const targetPosition = position.clone()
     const targetLookat = position.clone()
     const currentLookat = controls.target.clone()
@@ -360,25 +403,25 @@ const addLine2 = (points: number[]) => {
     return line;
 };
 
-const showHoughLines = async () => {
-    let houghLineGroup = scene.getObjectByName('houghLineGroup_' + activeImage.value?.userData.image.file_name);
-    if (houghLineGroup) {
-        houghLineGroup.visible = !houghLineGroup.visible
-        houghLinesVisible.value = houghLineGroup.visible
+const showSemanticLines = async () => {
+    let semanticLineGroup = scene.getObjectByName('semanticLineGroup_' + activeImage.value?.userData.image.file_name);
+    if (semanticLineGroup) {
+        semanticLineGroup.visible = !semanticLineGroup.visible
+        semanticLinesVisible.value = semanticLineGroup.visible
         return;
     }
     else {
-        houghLineGroup = new THREE.Group();
-        houghLineGroup.name = 'houghLineGroup_' + activeImage.value?.userData.image.file_name;
-        analyseGroup.add(houghLineGroup);
-        houghLinesVisible.value = true
+        semanticLineGroup = new THREE.Group();
+        semanticLineGroup.name = 'semanticLineGroup_' + activeImage.value?.userData.image.file_name;
+        analyseGroup.add(semanticLineGroup);
+        semanticLinesVisible.value = true
     }
     const image = activeImage.value?.userData.image;
     const imagePosition = activeImage.value?.position; // Get the position of the image plane
     // Get image dimensions
     const imageHeight = image.resolution.height;
 
-    // fetch hough lines from json file 
+    // fetch semantic lines from json file 
     const folderName = 'deep_hough_10k_orig01_out01_jsons'
     const fileName = activeImage.value?.userData.image.file_name.split('.')[0]
     const points: number[][] = [];
@@ -401,7 +444,7 @@ const showHoughLines = async () => {
 
     points.forEach((line: number[]) => {
         const lineObject = addLine2(line);
-        houghLineGroup.add(lineObject);
+        semanticLineGroup.add(lineObject);
     });
 }
 
@@ -479,17 +522,17 @@ const createSegmentationShape = (contourLayer: CountourLayer, imagePosition: THR
         });
         //draw contour lines from shape - optional to be done later
         let material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
-        if(color){
-             material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+        if (color) {
+            material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
         }
         else {
             activeImage.value?.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-                material = child.material
-            }
-        });
+                if (child instanceof THREE.Mesh) {
+                    material = child.material
+                }
+            });
         }
-     
+
         const geometry = new THREE.ShapeGeometry(shape);
         const mesh = new THREE.Mesh(geometry, material);
         mesh.scale.set(image.resolution.width / image.resolution.height, 1, 1);
@@ -542,12 +585,162 @@ const showPaintingSequence = async () => {
         const g = contourLayer.contours[0].color[1]; //this is only possible if there is only one contour per layer
         const b = contourLayer.contours[0].color[2]; //this is only possible if there is only one contour per layer
         const color = new THREE.Color(`rgb(${r}, ${g}, ${b})`);
-        const paintingSequenceLayerGroup = createSegmentationShape(contourLayer, imagePosition, image,color)
-        paintingSequenceLayerGroup.position.z += 0.01 + index * offset;
+        const paintingSequenceLayerGroup = createSegmentationShape(contourLayer, imagePosition, image, color)
+        paintingSequenceLayerGroup.position.z += 0.008 + index * offset; //here the arbitrary value of 0.008 is added to avoid overlapping with the segmentation geometry
         paintingSequenceGroup.add(paintingSequenceLayerGroup);
 
     });
 
+}
+
+const showImageDepth = async () => {
+    if (!activeImage.value) {
+        return
+    }
+    let imageDepthGroup = scene.getObjectByName('imageDepthGroup_' + activeImage.value?.userData.image.file_name);
+    if (imageDepthGroup) {
+        imageDepthGroup.visible = !imageDepthGroup.visible
+        imageDepthVisible.value = imageDepthGroup.visible
+        return;
+    }
+    else {
+        imageDepthGroup = new THREE.Group();
+        imageDepthGroup.name = 'imageDepthGroup_' + activeImage.value?.userData.image.file_name;
+        analyseGroup.add(imageDepthGroup);
+        imageDepthVisible.value = true;
+    }
+    const image = activeImage.value?.userData.image;
+    const imagePosition = activeImage.value?.position; // Get the position of the image plane
+
+    const folderName = 'midas_3_hybrid_magma/'
+
+    // fetch depth map from image file 
+    const depthFileName = activeImage.value?.userData.image.file_name.split('.')[0] + '.png'
+    const depthGeometry = new THREE.PlaneGeometry(1, 1);
+    const depthTexture = new THREE.TextureLoader().load(`/${folderName}/${depthFileName}`);
+    const depthMaterial = new THREE.MeshBasicMaterial({ map: depthTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    const depthPlane = new THREE.Mesh(depthGeometry, depthMaterial);
+    depthPlane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+    depthPlane.position.copy(imagePosition as THREE.Vector3);
+    depthPlane.position.z += 0.005;
+    depthPlane.visible = true;
+    depthPlane.userData = { image }
+    depthPlane.userData.isImage = true;
+    depthPlane.name = image.file_name;
+    imageDepthGroup.add(depthPlane);
+
+    //below is the next step to create a point cloud from the depth image
+    // const depthPoints: number[] = [];
+    // depthPoints.forEach((depth, index) => {
+    //     const x = index / image.resolution.width;
+    //     const y = (image.resolution.height - depth) / image.resolution.height;
+    //     depthPoints.push(x, y, 0.01);
+    // });
+
+}
+
+const showSemanticAnalysis = async () => {
+    if (!activeImage.value) {
+        return
+    }
+
+    //for the text we are not going to work with a group at the moment
+    if (semanticAnalysisVisible.value) {
+        semanticAnalysisVisible.value = !semanticAnalysisVisible.value
+        contentSemanticAnalysis.value = ""; // Update the ref's value"
+        moveCameraToPosition(activeImage.value.position)
+        return;
+    }
+    else {
+        //const image = activeImage.value?.userData.image;
+        //const imagePosition = activeImage.value?.position; // Get the position of the image plane
+        //const cameraSlidePosition = new THREE.Vector3(0, 0, 0)
+        const cameraSlidePosition = activeImage.value.position.clone()
+        cameraSlidePosition.x += 1
+        moveCameraToPosition(cameraSlidePosition)
+        //moveCameraToPosition(activeImage.value.position)
+        //const folderName = 'llava_run01_orig10k/'
+        const folderName2 = 'llava_run02_orig10k/'
+        //const fileName = activeImage.value?.userData.image.file_name.split('.')[0] + '.json'
+        const fileName = activeImage.value?.userData.image.file_name.replace('.', '_') + '.json'
+        const semamticJson = await fetch(`/${folderName2}/${fileName}`)
+            .then(response => response.json())
+            .then(data => {
+                return data
+            });
+
+        // select a random text from the array between the keys 'question1' to 'question5'
+        const randomKey = 'question' + randInt(1, 5);
+
+        //implementatin without typewriter effect
+        // contentSemanticAnalysis.value = semamticJson[randomKey];
+        // semanticAnalysisVisible.value = true;
+
+        //implementation with typewriter effect -writing whole words instead of single letters
+        const text = semamticJson[randomKey];
+        //const words = text.split(" ");
+        const words = text.split(/(\s+|\n)/); // Split by spaces and newlines
+        let wordIndex = 0;
+        semanticAnalysisVisible.value = true;
+        function typeNextWord() {
+            if (wordIndex < words.length && semanticAnalysisVisible.value) {
+
+                if (words[wordIndex].includes("\n")) {
+                    contentSemanticAnalysis.value += words[wordIndex];
+                } else {
+                    contentSemanticAnalysis.value += words[wordIndex]; // Add word or space
+                }
+
+                //contentSemanticAnalysis.value += words[wordIndex] + " ";
+                wordIndex++;
+                setTimeout(typeNextWord, 10); // Adjust the delay time (in ms) for different speeds
+            }
+        }
+        // Start the typewriter effect
+        typeNextWord();
+
+
+    }
+
+
+
+    // const setContent = () => {
+    //     contentSemanticAnalysis.value = "This is the text set using a ref variable."; // Update the ref's value
+    // };
+
+    //show some text on the screen
+    // const text = document.createElement('div');
+    // text.style.position = 'absolute';
+    // text.style.width = '100px';
+    // text.style.height = '100px';
+    // text.innerHTML = 'Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!';
+    // text.style.top = 100 + 'px';
+    // text.style.left = 100 + 'px';
+    // text.style.color = 'white';
+    // const divWrapper = new THREE.Object3D();
+    // const textWrapper = new CSS2DObject(text);
+    // divWrapper.add(textWrapper);
+    // semanticAnalysisGroup.add(divWrapper);
+
+    //document.body.appendChild(text);
+
+
+
+
+    // const image = activeImage.value?.userData.image;
+    // const imagePosition = activeImage.value?.position; // Get the position of the image plane
+
+    // const folderName = 'semantic_analysis_10k_orig01_out01_jsons'
+    // const fileName = activeImage.value?.userData.image.file_name.split('.')[0] + '.json'
+
+    // const semanticAnalysisJson: any = await fetch(`/${folderName}/${fileName}`)
+    //     .then(response => response.json())
+    //     .then(data => {
+    //         return data
+    //     });
+
+
+    // analyseGroup.add(semanticAnalysisGroup);
 }
 
 

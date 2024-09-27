@@ -327,8 +327,8 @@ async function updatePositionsFromCSV1(newPositions: any[]) {
         new TWEEN.Tween(initialPosition)
             .to(targetPosition, 2000 + Math.random() * 2000) // Randomize duration for each instance
             //.easing(TWEEN.Easing.Quadratic.Out)
-            //.easing(TWEEN.Easing.Quartic.Out)
-            .easing(TWEEN.Easing.Elastic.Out)
+            .easing(TWEEN.Easing.Quartic.Out)
+            //.easing(TWEEN.Easing.Elastic.Out)
             .onUpdate(() => {
                 dummy.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
                 dummy.updateMatrix();
