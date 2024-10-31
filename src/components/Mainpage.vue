@@ -3,11 +3,17 @@
         <div ref='threejsMap' @click="onClick" @mousemove="onDrag" @mousedown="isMouseDown = true"
             @touchstart="isMouseDown = true" @mouseup="mouseUp" @touchend="mouseUp">
             <div class="absolute top-2 h-auto w-full flex flex-row justify-between space-x-1">
-                <button class=" h-10 w-full bg-slate-200 rounded-lg"
+                <button
+                    class=" h-10 w-full bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto"
+                    :class="sceneMode === 'gallery' ? 'bg-slate-400' : ''"
                     @click.stop="sceneMode = 'gallery'">gallery</button>
-                <button class=" h-10 w-full bg-slate-200 rounded-lg"
+                <button
+                    class=" h-10 w-full bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto"
+                    :class="sceneMode === 'analyse' ? 'bg-slate-400' : ''"
                     @click.stop="sceneMode = 'analyse'">analyse</button>
-                <button class=" h-10 w-full bg-slate-200 rounded-lg"
+                <button
+                    class=" h-10 w-full bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto"
+                    :class="sceneMode === 'generate' ? 'bg-slate-400' : ''"
                     @click.stop="sceneMode = 'generate'">generate</button>
             </div>
             <div v-if="sceneMode == 'analyse'"
@@ -30,26 +36,60 @@
                     depth</button>
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
-                    :class="semanticAnalysisVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">semantic
+                    :class="semanticAnalysisVisible ? 'bg-slate-400' : ''"
+                    @click.stop="showSemanticAnalysis(true)">semantic
                     analysis</button>
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
-                    :class="houghLinesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">Hough
+                    :class="houghLinesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis(true)">Hough
                     lines</button>
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
-                    :class="houghCirclesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">Hough
+                    :class="houghCirclesVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis(true)">Hough
                     circles</button>
                 <button
                     class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 active:bg-slate-300 pointer-events-auto "
-                    :class="shapeRecognitionVisible ? 'bg-slate-400' : ''" @click.stop="showSemanticAnalysis">shape
+                    :class="shapeRecognitionVisible ? 'bg-slate-400' : ''"
+                    @click.stop="showSemanticAnalysis(true)">shape
                     recognition</button>
 
             </div>
             <div v-if="contentSemanticAnalysis && sceneMode == 'analyse'"
-                class="absolute top-1/3 right-160 h-1/2 w-96 flex flex-col justify-start items-center space-y-1 pointer-events-none text-white text-xs whitespace-pre-wrap ">
+                class="absolute top-1/4 right-160 h-1/2 w-108 flex flex-col justify-start items-center space-y-1 pointer-events-none text-white text-xs whitespace-pre-wrap ">
                 <p>{{ contentSemanticAnalysis }}</p>
 
+            </div>
+
+            <div v-if="sceneMode == 'analyse'"
+                class="absolute bottom-0 left-0 w-fit flex flex-row justify-start items-center space-x-1 pointer-events-none ">
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="loadPreviousImage">BACK</button>
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="loadNextImage">NEXT</button>
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="loadRandomNewImage">NEW</button>
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="putImageIntoUserGallery">LIKE</button>
+            </div>
+
+            <div v-if="sceneMode == 'gallery'"
+                class="absolute top-1/3 left-16 w-fit flex flex-col justify-start items-start space-y-1 pointer-events-none ">
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    :class="gallery == 'demo' ? 'bg-slate-400' : ''"
+                    @click.stop="() => { gallery = 'demo'; loadGallery(); }">demogallery</button>
+                <button v-show="userGalleryGroup.children.length > 0"
+                    class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    :class="gallery == 'user' ? 'bg-slate-400' : ''"
+                    @click.stop="() => { gallery = 'user'; loadGallery(); }">usergallery</button>
+                <!-- Button to load custom gallery -->
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="triggerFileInput">load custom gallery</button>
+                <input type="file" ref="fileInput" @change="handleFileChange" style="display: none;" accept=".json">
+
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="downloadGallery">save gallery</button>
+                <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+                    @click.stop="requestOllamaApi">tell me a joke</button>
             </div>
 
         </div>
@@ -68,24 +108,17 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 //import { depth } from 'three/examples/jsm/nodes/Nodes.js';
 //import { randFloat } from 'three/src/math/MathUtils.js';
 import { randInt } from 'three/src/math/MathUtils.js';
+//import { cos } from 'three/examples/jsm/nodes/Nodes.js';
 //import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 //import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
 
 
+const fileInput = ref<HTMLInputElement | null>(null);
+
 // Create a scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x707070);
-// // Add a directional light
-// const directionalLight = new THREE.DirectionalLight(0xffffff, 1.4);
-// directionalLight.position.set(-2, 5, 4);
-// scene.add(directionalLight);
-
-// // Add an ambient light
-// const ambientLight = new THREE.AmbientLight(0x404040, 30); // Soft white light
-// scene.add(ambientLight);
-
-
 
 // Create a camera
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -119,6 +152,12 @@ const houghCirclesVisible = ref(false)
 const shapeRecognitionVisible = ref(false)
 const contentSemanticAnalysis = ref(''); // Declare a ref variable with an initial empty string
 
+// this has to be deleted ASAP
+// <button class="h-10 w-fit px-4 bg-slate-200 rounded-lg hover:bg-slate-400 pointer-events-auto"
+//                     @click.stop="() => { emptyGroup(userGalleryGroup); gallery = 'user'; loadGallery(); }">load custom
+//                     gallery</button>
+
+
 //STATS for FPS monitoring
 const stats = new Stats();
 stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -127,7 +166,8 @@ document.body.appendChild(stats.dom);
 onMounted(() => {
     stats.begin();
     threejsMap.value?.appendChild(domElement);
-    loadGallery();
+    //loadGallery();
+    loadAnalyse(); //is this correct here? - otherwise we do not get an image on first startup, only when we change the state of scenemode
     window.addEventListener("resize", setSize);
     setSize();
     animate();
@@ -142,7 +182,6 @@ const setSize = () => {
 };
 
 
-
 // Render the scene
 function animate() {
     stats.update();
@@ -151,8 +190,10 @@ function animate() {
     controls.update();
     TWEEN.update();
 }
-const sceneMode = ref<'gallery' | 'analyse' | 'generate'>('gallery')
-//const sceneMode = ref<'gallery' | 'analyse' | 'generate'>('analyse')
+//const sceneMode = ref<'gallery' | 'analyse' | 'generate'>('gallery')
+const sceneMode = ref<'gallery' | 'analyse' | 'generate'>('analyse')
+//make a variable which discerns whether we are working with the demo gallery or the user gallery
+const gallery = ref<'demo' | 'user'>('demo')
 
 
 watch(() => sceneMode.value, (newVal, oldVal) => {
@@ -166,9 +207,13 @@ watch(() => sceneMode.value, (newVal, oldVal) => {
     }
 })
 
-const galleryGroup: THREE.Group = new THREE.Group();
-galleryGroup.name = 'galleryGroup'
-scene.add(galleryGroup);
+//we will make 2 gallery groups - one for the demo gallery and one for the user gallery
+const demoGalleryGroup: THREE.Group = new THREE.Group();
+demoGalleryGroup.name = 'demoGalleryGroup'
+scene.add(demoGalleryGroup);
+const userGalleryGroup: THREE.Group = new THREE.Group();
+userGalleryGroup.name = 'userGalleryGroup'
+scene.add(userGalleryGroup);
 const analyseGroup: THREE.Group = new THREE.Group();
 analyseGroup.name = 'analyseGroup'
 scene.add(analyseGroup);
@@ -191,48 +236,146 @@ const showGroup = (groups: THREE.Group[]) => {
         })
     })
 }
+
+//even more updated third attempt of emptying a group
+const disposeObjects = (object: THREE.Object3D) => {
+    object.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+            console.log('dispose:', child);
+            child.geometry.dispose();
+            child.material.dispose();
+            if (child.material.map) child.material.map.dispose(); // Dispose of the texture if it exists
+        }
+    });
+}
+
+const emptyGroup = (targetGroup: THREE.Group) => {
+    while (targetGroup.children.length > 0) {
+        const object = targetGroup.children[0];
+        targetGroup.remove(object);
+        disposeObjects(object); // Use disposeObjects to handle disposal
+    }
+};
+
+
 type ImageData = {
     file_name: string;
     resolution: {
         width: number;
         height: number;
     };
-}
-const isGalleryLoaded = ref(false)
+};
+
+
+//new version below
+const loadGalleryImages = async (galleryFile: string, targetGroup: THREE.Group) => {
+    // Clear the target group
+    // while (targetGroup.children.length > 0) {
+    //     const object = targetGroup.children[0];
+    //     targetGroup.remove(object);
+    //     if (object instanceof THREE.Mesh) {
+    //         object.geometry.dispose();
+    //     }
+    //     if (object instanceof THREE.Mesh) {
+    //         object.material.dispose();
+    //     }
+    //     if (object instanceof THREE.Mesh && object.material.map) object.material.map.dispose(); // Dispose of the texture if it exists
+    // }
+    emptyGroup(targetGroup);
+
+
+    // Fetch and load the gallery images
+    const response = await fetch(galleryFile);
+    const data = await response.json();
+
+    data.forEach((image: ImageData) => {
+        const geometry = new THREE.PlaneGeometry(1, 1);
+        const texture = new THREE.TextureLoader().load(`/sample_images_10k_orig01/${image.file_name}`);
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+        const plane = new THREE.Mesh(geometry, material);
+        plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+        plane.visible = true;
+        plane.userData = { image };
+        plane.userData.isImage = true;
+        plane.name = image.file_name;
+        targetGroup.add(plane);
+    });
+
+    arrangeIn2DGrid(10, 0.1, targetGroup.children);
+};
+
+
+//old version below
+// const loadGalleryImages = async (galleryFile: string) => {
+//     await fetch(galleryFile)
+//         .then(response => response.json())
+//         .then(data => {
+//             data.forEach((image: ImageData) => {
+//                 const geometry = new THREE.PlaneGeometry(1, 1);
+//                 const texture = new THREE.TextureLoader().load(`/sample_images_10k_orig01/${image.file_name}`);
+//                 const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+//                 //const material = new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide });
+//                 const plane = new THREE.Mesh(geometry, material);
+//                 plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+//                 plane.visible = true
+//                 //plane.translateX(offset.value) //NOT REQUIRED??
+//                 plane.userData = { image }
+//                 plane.userData.isImage = true;
+//                 plane.name = image.file_name;
+
+//                 if (gallery.value === 'user') {
+//                     userGalleryGroup.add(plane);
+//                 }
+//                 else {
+//                     demoGalleryGroup.add(plane);
+//                 }
+//             });
+//         });
+//     if (gallery.value === 'demo') {
+//         arrangeIn2DGrid(10, 0.1, demoGalleryGroup.children)
+//     }
+//     else if (gallery.value === 'user') {
+//         arrangeIn2DGrid(10, 0.1, userGalleryGroup.children)
+
+//     }
+//     //arrangeIn2DGrid(10, 0.1, demoGalleryGroup.children) //why are we doing this only for the demo gallery? - we should do it for the user gallery as well
+// }
+
+const isDemoGalleryLoaded = ref(false)
 const loadGallery = async () => {
 
-    if (isGalleryLoaded.value) {
-        showGroup([galleryGroup])
-        tweenToPosition(lastCameraPosition)
-        tweenToCameraTarget(controls.target, lastCameraTarget)
-        hideGroup([analyseGroup, generateGroup])
-        return
+    if (gallery.value === 'demo') {
+        hideGroup([userGalleryGroup, analyseGroup, generateGroup]);
+        if (isDemoGalleryLoaded.value) {
+            showGroup([demoGalleryGroup]);
+            tweenToPosition(lastCameraPosition);
+            tweenToCameraTarget(controls.target, lastCameraTarget);
+            return;
+        }
+        else {
+            await loadGalleryImages('/image_resolutions100.json', demoGalleryGroup);
+            //loadGalleryImages('/image_resolutions100.json');
+            //arrangeIn2DGrid(10, 0.1, demoGalleryGroup.children);
+            isDemoGalleryLoaded.value = true;
+        }
+
+    } else if (gallery.value === 'user') {
+        if (userGalleryGroup.children.length > 0) {
+            showGroup([userGalleryGroup]);
+            arrangeIn2DGrid(10, 0.1, userGalleryGroup.children)
+            tweenToPosition(lastCameraPosition);
+            tweenToCameraTarget(controls.target, lastCameraTarget);
+            hideGroup([demoGalleryGroup, analyseGroup, generateGroup]);
+            return;
+        }
+        await loadGalleryImages('/user_gallery02.json', userGalleryGroup);
+        //loadGalleryImages('/user_gallery02.json');
+        //isDemoGalleryLoaded.value = true;
     }
-    // get imageJson from puplic folder
-    //const offset = ref(0) //NOT REQUIRED??
-    await fetch('/image_resolutions100.json')
-        .then(response => response.json())
-        .then(data => {
-            data.forEach((image: ImageData) => {
-                const geometry = new THREE.PlaneGeometry(1, 1);
-                const texture = new THREE.TextureLoader().load(`/sample_images_10k_orig01/${image.file_name}`);
-                const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-                //const material = new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide });
-                const plane = new THREE.Mesh(geometry, material);
-                plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
-                plane.visible = true
-                //plane.translateX(offset.value) //NOT REQUIRED??
-                plane.userData = { image }
-                plane.userData.isImage = true;
-                plane.name = image.file_name;
-                galleryGroup.add(plane);
-            });
-        });
-    arrangeIn2DGrid(10, 0.1, galleryGroup.children)
-    isGalleryLoaded.value = true
     sceneMode.value = 'gallery'
-    hideGroup([analyseGroup, generateGroup])
+    hideGroup([analyseGroup, generateGroup]) //not sure if we need this
 }
+
 const arrangeIn2DGrid = (maxWidth: number, margin: number, group: THREE.Object3D[]) => {
     let i = 0;
     // const cols = Math.ceil(group.length / rows)
@@ -256,28 +399,305 @@ const arrangeIn2DGrid = (maxWidth: number, margin: number, group: THREE.Object3D
         accumulatedHeight -= 1 + margin;
     }
 }
+
+
+//new version with await before loadGalleryImages
+// const loadCustomGallery = async () => {
+//     console.log('load custom gallery');
+//     //emptyGroup(userGalleryGroup); // lets try without this here - since we are calling it anyway in the loadGalleryImgages function
+//     gallery.value = 'user';
+//     await loadGalleryImages('/user_gallery01.json', userGalleryGroup);
+//     //loadGalleryImages('/user_gallery01.json');
+//     //loadGallery(); //not required
+//     sceneMode.value = 'gallery'
+//     hideGroup([analyseGroup, generateGroup, demoGalleryGroup]);
+// };
+
+//even newer version with user specified gallery file
+const loadCustomGallery = async (filePath: string) => {
+    console.log('load custom gallery');
+    gallery.value = 'user';
+    await loadGalleryImages(filePath, userGalleryGroup);
+    sceneMode.value = 'gallery';
+    hideGroup([analyseGroup, generateGroup, demoGalleryGroup]);
+};
+
+const triggerFileInput = () => {
+    fileInput.value?.click();
+};
+
+const handleFileChange = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+        const filePath = URL.createObjectURL(file);
+        loadCustomGallery(filePath);
+    }
+};
+
+const downloadGallery = () => {
+    // Step 1: Extract Data from userGalleryGroup
+    const userData = userGalleryGroup.children.map(object => ({
+        file_name: object.userData.image.file_name,
+        resolution: {
+            width: object.userData.image.resolution.width,
+            height: object.userData.image.resolution.height
+        }
+    }));
+
+    // Step 2: Convert data to JSON
+    const jsonData = JSON.stringify(userData, null, 2);
+    const blob = new Blob([jsonData], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    // Step 3: Trigger Download
+    const downloadLink = document.createElement("a");
+    (downloadLink as HTMLAnchorElement).href = url;
+    downloadLink.download = "userGalleryData.json";
+    document.body.appendChild(downloadLink);
+    if (confirm("Do you want to download the gallery data?")) {
+        downloadLink.click();
+    }
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(url);
+    console.log('downloaded:', userData);
+};
+
+
+const requestOllamaApi = async () => {
+    fetch('https://seahorse-polished-remarkably.ngrok-free.app/api/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+
+            "model": "llama3.1:70b",
+            "temperature": 0,
+            "prompt": "Tell me a joke!",
+            "system": "You are an ironic Programmer.",
+            "stream": false
+        }), // Replace with actual data to send
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Data saved:', data);
+            // Optionally do something with the response data
+        })
+        .catch(error => {
+            console.error('There was a problem with the fetch operation:', error);
+        });
+}
+
+
+//create a function that loads a random image from a folder and displays it in the analyse mode
+//this function should be called when the analyse mode is activated
+let loadedImages: number[] = []; // Store filenames or indices of loaded images
+let imagesData: ImageData[] = [];   // Store the parsed JSON data here
+let currentImageIndex: number = -1;  // Tracks the index of the current image (-1 means no image loaded)
+
+// Function to load and parse the JSON file (metadata)
+async function loadImagesMetadata() {
+    const response = await fetch('/image_resolutions10k.json');
+    const data = await response.json();
+    imagesData = data; // Save the parsed data
+    return data;
+}
+
+// Helper function to get a random index that hasn't been used
+function getRandomUnusedIndex() {
+    if (loadedImages.length === imagesData.length) {
+        console.log('All images have been loaded at least once.');
+        return null; // All images have been used
+    }
+
+    let randomIndex;
+    do {
+        randomIndex = Math.floor(Math.random() * imagesData.length);
+    } while (loadedImages.includes(randomIndex));
+
+    return randomIndex;
+}
+
+// Function to load an image at a specific index
+function loadImageByIndex(index: number) {
+    //here we  should hide the whole analysegroup again, to hide the previous image and its analysis results
+    //then we will load a new image and show the analysis results for this image - at the end after loading - and updating the activeimage value
+    hideGroup([analyseGroup, userGalleryGroup]); //the hiding of the userGalleryGroup is necessary, when liking the image, otherwise it will be visible when next image is loaded, since it is added to userGalleryGroup
+    const image = imagesData[loadedImages[index]];
+    console.log('index:', index);
+    console.log('loadedImages[index]:', loadedImages[index]);
+    console.log('image.file_name:', image.file_name);
+
+    //first we will check, if the image has already been loaded and is thus part of the analyseGroup
+    // this will be always the case, when we switch between images unless we later remove images from analyseGroup due to memory issues
+    //only the random image loading will not be part of the analyseGroup
+    let found = false;
+    analyseGroup.children.forEach(child => {
+        if (child.name === image.file_name) {
+            child.visible = true;
+            found = true;
+            activeImage.value = child;
+            //console.log('we found the image in the analyseGroup:', child);
+            //console.log('userGalleryGroup:', userGalleryGroup);
+        }
+    })
+    //if the image is not found in the analyseGroup, we will load it and add it to the analyseGroup
+    if (!found) {
+        console.log('we did not find the image in the analyseGroup - loading it now');
+        const geometry = new THREE.PlaneGeometry(1, 1);
+        const texture = new THREE.TextureLoader().load(`/sample_images_10k_orig01/${image.file_name}`);
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+        const plane = new THREE.Mesh(geometry, material);
+        plane.scale.set(image.resolution.width / image.resolution.height, 1, 1);
+        plane.visible = true
+        plane.userData = { image }
+        plane.userData.isImage = true;
+        plane.name = image.file_name;
+        analyseGroup.add(plane);
+        //console.log('plane:', plane);
+        activeImage.value = plane // Set the active image to the newly loaded image
+    }
+    // Update the current image index
+    currentImageIndex = index;
+    //move the camera position - here we should improve by checking if the semantic analysis is visible and if yes move directly to the cameraSlide position
+    if (activeImage.value) {
+        moveCameraToPosition(activeImage.value.position);
+    }
+    //show the analysis results for the new image
+    //we should make it conditional, so that we only show the analysis results, if the corresponding checkbox is checked
+    if (semanticLinesVisible.value) {
+        showSemanticLines();
+        //console.log('semanticLinesVisible: ', semanticLinesVisible.value);
+    }
+    if (segmentationVisible.value) {
+        showSegmentationGeometry();
+    }
+    if (paintingSequenceVisible.value) {
+        showPaintingSequence();
+    }
+    if (imageDepthVisible.value) {
+        showImageDepth();
+    }
+    if (semanticAnalysisVisible.value) {
+        showSemanticAnalysis(false);
+        //console.log('semanticAnalysisVisible: ', semanticAnalysisVisible.value);
+    }
+    if (houghLinesVisible.value) {
+        //showHoughLines();
+        showSemanticAnalysis(false);
+    }
+    if (houghCirclesVisible.value) {
+        //showHoughCircles();
+        showSemanticAnalysis(false);
+    }
+    if (shapeRecognitionVisible.value) {
+        //showShapeRecognition();
+        showSemanticAnalysis(false);
+    }
+
+    console.log('activeImage:', activeImage.value);
+}
+
+const loadRandomNewImage = async () => {
+    if (imagesData.length === 0) {
+        await loadImagesMetadata(); // Ensure metadata is loaded
+    }
+
+    const randomIndex = getRandomUnusedIndex();
+    if (randomIndex === null) {
+        return; // No more images to load
+    }
+
+    // Add the index of the loaded image to the array of loaded images
+    loadedImages.push(randomIndex);
+
+    // Load the new image by index
+    loadImageByIndex(loadedImages.length - 1);
+    //console.log('loadedImages:', loadedImages);
+}
+
+// Function for "Back" button functionality
+function loadPreviousImage() {
+    if (currentImageIndex > 0) {
+        loadImageByIndex(currentImageIndex - 1);
+    } else {
+        console.log("No previous image available.");
+    }
+}
+
+// Function for "Next" button functionality
+function loadNextImage() {
+    if (currentImageIndex < loadedImages.length - 1) {
+        loadImageByIndex(currentImageIndex + 1);
+    } else {
+        console.log("Already the latest image, click NEW for new image.");
+    }
+}
+
+// function to put the current image into the user gallery
+function putImageIntoUserGallery() {
+    if (currentImageIndex === -1) {
+        console.log("No image loaded to put into user gallery.");
+        return;
+    }
+
+    // // Get the current image which is the active image
+
+    if (activeImage.value) {
+        //check whether the image is already in the user gallery
+        let found = false;
+        userGalleryGroup.children.forEach(child => {
+            if (child.name === activeImage.value?.userData.image.file_name) {
+                found = true;
+            }
+        })
+        if (found) {
+            console.log("Image is already in the user gallery.");
+            return;
+        }
+        else {
+            userGalleryGroup.add(activeImage.value.clone());
+        }
+        gallery.value = 'user';
+    } else {
+        console.log("No active image to add to the user gallery.");
+    }
+
+}
+
 const loadAnalyse = () => {
     lastCameraPosition.copy(camera.position) //will this work also - if we directly start in analyse mode? i think yes, since we declare it as a global variable
     lastCameraTarget.copy(controls.target)
-    hideGroup([galleryGroup, generateGroup])
+    hideGroup([demoGalleryGroup, userGalleryGroup, generateGroup])
     semanticLinesVisible.value = false;
     segmentationVisible.value = false;
     paintingSequenceVisible.value = false;
     imageDepthVisible.value = false;
     semanticAnalysisVisible.value = false;
     contentSemanticAnalysis.value = ""; // Update the ref's value
+    stopTyping(); // Stop the typewriter effect //am not sure - if this is good here - there seems to be a lot of redundancy, especially around that typewriter effect
     houghLinesVisible.value = false;
     houghCirclesVisible.value = false;
     shapeRecognitionVisible.value = false;
 
-    //do we need this next loop?	
-    analyseGroup.children.forEach(child => {
-        //analyseGroup.remove(child)
-        // dispose everything from child 
-        child.visible = false;
-    })
+    //do we need this next loop?	- we already call the function hideGroup above - ok but we do not call it for the analysegroup - so why does the analyse stuff get hidden?
+    // i think it is because we call the function hidegroup for the analysegroup when we go into any other scene mode - like gallery or generate
+    // analyseGroup.children.forEach(child => {
+    //     //analyseGroup.remove(child)
+    //     // dispose everything from child 
+    //     child.visible = false;
+    // })
+
     if (activeImage.value) {
+        console.log('am in analyse mode: ', activeImage.value); //to be deleted later
         let found = false;
+        //console.log('userGallerGroup.length', userGalleryGroup.children.length);
         analyseGroup.children.forEach(child => {
             if (child.name === activeImage.value?.userData.image.file_name) {
                 child.visible = true;
@@ -289,12 +709,18 @@ const loadAnalyse = () => {
             const image = activeImage.value.clone();
             image.visible = true;
             analyseGroup.add(image);
+            //console.log('image not found in analyeGroup hence added to analyseGroup: ', image);
         }
 
         //for each analyseGroup#
 
         //analyseGroup.children[0].visible = true
         moveCameraToPosition(activeImage.value.position)
+    }
+
+    else {
+        console.log('no active image value - loading new random image'); //to be deleted later
+        loadRandomNewImage();
     }
     // this part does not work yet - we have to create a random image loading routine from the whole of the dataset, not only from the gallery
     // probably this part should be removed later in it current form
@@ -348,7 +774,7 @@ const loadGenerate = () => {
     const cube = new THREE.Mesh(geometry, material);
 
     generateGroup.add(cube);
-    hideGroup([galleryGroup, analyseGroup])
+    hideGroup([demoGalleryGroup, userGalleryGroup, analyseGroup])
 }
 
 
@@ -376,11 +802,23 @@ const onClick = (e: Event) => {
     mouse.x = (e as MouseEvent).clientX / window.innerWidth * 2 - 1;
     mouse.y = -(e as MouseEvent).clientY / window.innerHeight * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(galleryGroup.children);
+
+    //first filter visible objects before raycasting, otherwise it gave some erratic behaviour
+    const visibleObjects = [...demoGalleryGroup.children, ...userGalleryGroup.children].filter(obj => obj.visible);
+    const intersects = raycaster.intersectObjects(visibleObjects);
+
+    //const intersects = raycaster.intersectObjects([...demoGalleryGroup.children, ...userGalleryGroup.children]);
     if (intersects.length > 0 && !isDragging.value) {
         const object = intersects[0].object;
-        if (object.userData.isImage && object.visible) {
+        //if (object.userData.isImage && object.visible) {  //maybe  we can make do without the visible check? YES delete this asap
+        //in future we should try to toggle the raycasting on and off for the different groups - so that we can avoid the visible check
+        //should use raycast = null for the groups we do not want to raycast
+        if (object.userData.isImage) {
             activeImage.value = object
+            console.log('object: ', object);
+            if (gallery.value === 'user') {
+                emptyGroup(analyseGroup);
+            }
             sceneMode.value = 'analyse'
         }
     }
@@ -405,9 +843,14 @@ const addLine2 = (points: number[]) => {
 
 const showSemanticLines = async () => {
     let semanticLineGroup = scene.getObjectByName('semanticLineGroup_' + activeImage.value?.userData.image.file_name);
+    console.log('semanticLineGroup: ', semanticLineGroup);
+    console.log('analyseGroup: ', analyseGroup);
     if (semanticLineGroup) {
+        console.log('semantic lines found');
+        console.log('semanticLineGroup.visible: ', semanticLineGroup.visible);
         semanticLineGroup.visible = !semanticLineGroup.visible
         semanticLinesVisible.value = semanticLineGroup.visible
+        console.log('semanticLineGroup.visible: ', semanticLineGroup.visible);
         return;
     }
     else {
@@ -639,109 +1082,71 @@ const showImageDepth = async () => {
 
 }
 
-const showSemanticAnalysis = async () => {
-    if (!activeImage.value) {
-        return
-    }
+// Typewriter effect setup
+let typingTimeout: ReturnType<typeof setTimeout>; // Variable to store the timeout ID
+let isTyping = false; // Flag to track if typing is in progress
 
-    //for the text we are not going to work with a group at the moment
-    if (semanticAnalysisVisible.value) {
-        semanticAnalysisVisible.value = !semanticAnalysisVisible.value
-        contentSemanticAnalysis.value = ""; // Update the ref's value"
-        moveCameraToPosition(activeImage.value.position)
+// Function to apply Markdown formatting
+function applyMarkdownFormatting(word: string) {
+    return word.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+}
+
+// Function to type the next word
+function typeNextWord(words: string[], wordIndex: number) {
+    if (wordIndex < words.length && isTyping) {
+        //if (wordIndex < words.length) {
+        let currentWord = words[wordIndex];
+        const formattedWord = applyMarkdownFormatting(currentWord);
+        contentSemanticAnalysis.value += formattedWord;
+        typingTimeout = setTimeout(() => typeNextWord(words, wordIndex + 1), 10); // Adjust typing speed
+    }
+}
+
+// Function to start the typewriter effect
+function startTyping(newText: string) {
+    stopTyping(); // Stop the current typing process if it's running
+    const words = newText.split(/(\s+|\n+)/); // Split the new text by spaces and newlines
+    contentSemanticAnalysis.value = ""; // Clear existing text
+    isTyping = true; // Set typing flag to true
+    typeNextWord(words, 0); // Start typing
+}
+
+// Function to stop the typewriter effect
+function stopTyping() {
+    clearTimeout(typingTimeout); // Clear any existing timeout
+    isTyping = false; // Set typing flag to false
+}
+
+const showSemanticAnalysis = async (toggle: boolean) => {
+    if (!activeImage.value) return;
+
+    if (semanticAnalysisVisible.value && toggle) {
+        semanticAnalysisVisible.value = !semanticAnalysisVisible.value;
+        contentSemanticAnalysis.value = ""; // Clear existing text
+        moveCameraToPosition(activeImage.value.position);
+        stopTyping(); // Stop the current typing process if it's running
         return;
     }
-    else {
-        //const image = activeImage.value?.userData.image;
-        //const imagePosition = activeImage.value?.position; // Get the position of the image plane
-        //const cameraSlidePosition = new THREE.Vector3(0, 0, 0)
-        const cameraSlidePosition = activeImage.value.position.clone()
-        cameraSlidePosition.x += 1
-        moveCameraToPosition(cameraSlidePosition)
-        //moveCameraToPosition(activeImage.value.position)
-        //const folderName = 'llava_run01_orig10k/'
-        const folderName2 = 'llava_run02_orig10k/'
-        //const fileName = activeImage.value?.userData.image.file_name.split('.')[0] + '.json'
-        const fileName = activeImage.value?.userData.image.file_name.replace('.', '_') + '.json'
-        const semamticJson = await fetch(`/${folderName2}/${fileName}`)
-            .then(response => response.json())
-            .then(data => {
-                return data
-            });
 
-        // select a random text from the array between the keys 'question1' to 'question5'
+    if (semanticAnalysisVisible.value === true && !toggle || semanticAnalysisVisible.value === false) {
+        contentSemanticAnalysis.value = ""; // Clear existing text
+        stopTyping();
+        const cameraSlidePosition = activeImage.value.position.clone();
+        cameraSlidePosition.x += 1;
+        moveCameraToPosition(cameraSlidePosition);
+
+        const folderName = 'llava_run02_orig10k/';
+        const fileName = activeImage.value?.userData.image.file_name.replace('.', '_') + '.json';
+        const semanticJson = await fetch(`/${folderName}/${fileName}`).then(response => response.json());
+
         const randomKey = 'question' + randInt(1, 5);
-
-        //implementatin without typewriter effect
-        // contentSemanticAnalysis.value = semamticJson[randomKey];
-        // semanticAnalysisVisible.value = true;
-
-        //implementation with typewriter effect -writing whole words instead of single letters
-        const text = semamticJson[randomKey];
-        //const words = text.split(" ");
-        const words = text.split(/(\s+|\n)/); // Split by spaces and newlines
-        let wordIndex = 0;
-        semanticAnalysisVisible.value = true;
-        function typeNextWord() {
-            if (wordIndex < words.length && semanticAnalysisVisible.value) {
-
-                if (words[wordIndex].includes("\n")) {
-                    contentSemanticAnalysis.value += words[wordIndex];
-                } else {
-                    contentSemanticAnalysis.value += words[wordIndex]; // Add word or space
-                }
-
-                //contentSemanticAnalysis.value += words[wordIndex] + " ";
-                wordIndex++;
-                setTimeout(typeNextWord, 10); // Adjust the delay time (in ms) for different speeds
-            }
-        }
-        // Start the typewriter effect
-        typeNextWord();
-
-
+        const text = semanticJson[randomKey];
+        semanticAnalysisVisible.value = true; //somehow this needs to be set to true, otherwise the text will not be displayed, but it should not be like that
+        startTyping(text);
     }
-
-
-
-    // const setContent = () => {
-    //     contentSemanticAnalysis.value = "This is the text set using a ref variable."; // Update the ref's value
-    // };
-
-    //show some text on the screen
-    // const text = document.createElement('div');
-    // text.style.position = 'absolute';
-    // text.style.width = '100px';
-    // text.style.height = '100px';
-    // text.innerHTML = 'Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!';
-    // text.style.top = 100 + 'px';
-    // text.style.left = 100 + 'px';
-    // text.style.color = 'white';
-    // const divWrapper = new THREE.Object3D();
-    // const textWrapper = new CSS2DObject(text);
-    // divWrapper.add(textWrapper);
-    // semanticAnalysisGroup.add(divWrapper);
-
-    //document.body.appendChild(text);
-
-
-
-
-    // const image = activeImage.value?.userData.image;
-    // const imagePosition = activeImage.value?.position; // Get the position of the image plane
-
-    // const folderName = 'semantic_analysis_10k_orig01_out01_jsons'
-    // const fileName = activeImage.value?.userData.image.file_name.split('.')[0] + '.json'
-
-    // const semanticAnalysisJson: any = await fetch(`/${folderName}/${fileName}`)
-    //     .then(response => response.json())
-    //     .then(data => {
-    //         return data
-    //     });
-
-
-    // analyseGroup.add(semanticAnalysisGroup);
 }
+
+
 
 
 </script>

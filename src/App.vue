@@ -1,7 +1,7 @@
 <template>
   <div>
     <Landingpage v-if="!activateMainpage" @leave="leaveLandingpage"/>
-    <Mainpage v-if="activateMainpage" :activeImage="activeImage" @setActiveImage="setActiveImage"/>
+    <Mainpage v-if="activateMainpage" />
   </div>
 </template>
 
@@ -11,10 +11,10 @@ import { ref } from 'vue';
 import Mainpage from './components/Mainpage.vue'
 import Landingpage from './components/Landingpage.vue'
 
-const activeImage = ref(0)
-const setActiveImage = (index: number) => {
-  activeImage.value = index
-}
+//const activeImage = ref(0)
+//const setActiveImage = (index: number) => {
+  //activeImage.value = index
+//}
 const activateMainpage = ref(false)
 const leaveLandingpage = () => {
   activateMainpage.value = true
