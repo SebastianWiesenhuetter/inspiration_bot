@@ -30,11 +30,13 @@ dist-ssr
 /public/deep_hough_10k_orig01_out01_jsons
 /public/sample100
 
-/z_archiv
+z_archiv
 z_graphics_buttons
 dist_testing
 sam01_cutouts_10k01_100
 sam_out01_contours_10k_orig01_cleanup_merged_100
+sam_out01_contours_10k_orig01_cleanup_merged
+learn2paint_out01_contours_cleanup_merged
 learn2paint_out01_contours_cleanup_merged_100
 midas_3_hybrid_magma
 llava_run01_orig10k

@@ -8,7 +8,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 // import ThreejsScene from './components/ThreejsScene.vue'
-import Mainpage from './components/Mainpage.vue'
+import Mainpage from './components/Mainpage.vue' //<Mainpage v-if="activateMainpage" />
+import ForceGraph from './components/ForceGraph11.vue' //<ForceGraph v-if="activateMainpage" />
 import Landingpage from './components/Landingpage.vue'
 
 //const activeImage = ref(0)

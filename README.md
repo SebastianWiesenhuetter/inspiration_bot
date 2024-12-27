@@ -19,7 +19,7 @@ Follow these steps to set up and run the project locally.
 
 2. Navigate into the project directory:
     ```bash
-    cd threejsBoilerplate
+    cd inspiration_bot
     ```
 
 3. Install the project dependencies:
