@@ -10,7 +10,7 @@ Follow these steps to set up and run the project locally.
 
 - Node.js and npm installed on your machine.
 
-### Installation
+### Installation - frontend
 
 1. Clone the repository:
     ```bash
@@ -27,8 +27,17 @@ Follow these steps to set up and run the project locally.
     npm install
     ```
 
-### Running the Project
+### Running the Project 
 
 Start the development server:
 ```bash
 npm run dev
+
+### installation - backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+### runnning the backend server
+uvicorn main:app --reload
