@@ -32,12 +32,19 @@ Follow these steps to set up and run the project locally.
 Start the development server:
 ```bash
 npm run dev
+```
 
-### installation - backend
+### Install backend
+
+```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
 
 ### runnning the backend server
+
+```bash
 uvicorn main:app --reload
+```
