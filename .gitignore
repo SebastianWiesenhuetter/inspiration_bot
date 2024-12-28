@@ -7,10 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+#specific to frontend now
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/*.local
 
 # Editor directories and files
 .vscode/*
@@ -23,22 +24,22 @@ dist-ssr
 *.sln
 *.sw?
 
-sample10
-sample_images_10k_orig01
-sample_images_10k_orig01_64
-sample_images_10k_orig01_128
-deep_hough_10k_orig01_out01_jsons
-sample100
+# Frontend
+frontend/public/sample10/
+frontend/public/sample_images_10k_orig01/
+frontend/public/sample_images_10k_orig01_64/
+frontend/public/sample_images_10k_orig01_128/
+frontend/public/deep_hough_10k_orig01_out01_jsons/
+frontend/public/sample100/
+frontend/public/sam01_cutouts_10k01_100/
+frontend/public/sam_out01_contours_10k_orig01_cleanup_merged_100/
+frontend/public/sam_out01_contours_10k_orig01_cleanup_merged/
+frontend/public/learn2paint_out01_contours_cleanup_merged/
+frontend/public/learn2paint_out01_contours_cleanup_merged_100/
+frontend/public/midas_3_hybrid_magma/
+frontend/public/llava_run01_orig10k/
+frontend/public/llava_run02_orig10k/
 
+# Archive
 z_archiv
 z_graphics_buttons
-dist_testing
-sam01_cutouts_10k01_100
-sam_out01_contours_10k_orig01_cleanup_merged_100
-sam_out01_contours_10k_orig01_cleanup_merged
-learn2paint_out01_contours_cleanup_merged
-learn2paint_out01_contours_cleanup_merged_100
-midas_3_hybrid_magma
-llava_run01_orig10k
-llava_run02_orig10k
-
