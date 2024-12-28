@@ -40,6 +40,10 @@ frontend/public/midas_3_hybrid_magma/
 frontend/public/llava_run01_orig10k/
 frontend/public/llava_run02_orig10k/
 
+# Python - backend
+backend/venv/
+backend/__pycache__/
+
 # Archive
 z_archiv
 z_graphics_buttons
